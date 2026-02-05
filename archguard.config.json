@@ -1,0 +1,24 @@
+{
+  "entryPoint": "./src/cli/cli.ts",
+  "srcDirectory": "./src",
+  "rules": {
+    "maxFileLines": 500,
+    "layerRules": {
+      "ui": ["application", "domain"],
+      "application": ["domain"],
+      "domain": [],
+      "infra": ["domain"]
+    },
+    "forbiddenImports": [
+      {
+        "pattern": "**/test/**",
+        "from": "**/src/**"
+      }
+    ]
+  },
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/node_modules/**"
+  ]
+}

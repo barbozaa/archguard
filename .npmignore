@@ -1,0 +1,45 @@
+# Source files
+src/
+tests/
+*.test.ts
+*.spec.ts
+
+# Build configuration
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+
+# Development files
+.gitignore
+.git/
+.vscode/
+.idea/
+*.log
+
+# Coverage and test results
+coverage/
+*.tsbuildinfo
+
+# Documentation (except README and LICENSE)
+CONTRIBUTING.md
+DEMO.md
+PHASE_*.md
+PROJECT_SUMMARY.md
+QUICK_REFERENCE.md
+REMAINING_RULES.md
+RULES_*.md
+AUDIT_*.md
+CHANGELOG.md
+USAGE.md
+
+# Development scripts
+fix-configs.pl
+coverage-report.txt
+
+# Config file (users should create their own)
+archguard.config.json
+
+# Lock files (users may use different package managers)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
