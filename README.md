@@ -31,13 +31,13 @@ ArchGuard is an **Architecture Intelligence Platform** that helps engineering te
 
 ```bash
 # Run instantly via npx (no installation)
-npx archguard
+npx @barbozaa/archguard
 
 # Or install globally
-npm install -g archguard
+npm install -g @barbozaa/archguard
 
 # Or add to your project
-npm install --save-dev archguard
+npm install --save-dev @barbozaa/archguard
 ```
 
 ### Basic Usage
@@ -61,7 +61,7 @@ archguard --format executive
 ```yaml
 # GitHub Actions example
 - name: Architecture Analysis
-  run: npx archguard --format json > architecture-report.json
+  run: npx @barbozaa/archguard --format json > architecture-report.json
 ```
 
 ---
@@ -619,7 +619,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - run: npx archguard --format json > report.json
+      - run: npx @barbozaa/archguard --format json > report.json
       - name: Upload Report
         uses: actions/upload-artifact@v3
         with:
@@ -632,7 +632,7 @@ jobs:
 ```yaml
 architecture-check:
   script:
-    - npx archguard --format json
+    - npx @barbozaa/archguard --format json
   artifacts:
     reports:
       json: architecture-report.json
@@ -643,7 +643,7 @@ architecture-check:
 ```groovy
 stage('Architecture Analysis') {
   steps {
-    sh 'npx archguard --format json > architecture-report.json'
+    sh 'npx @barbozaa/archguard --format json > architecture-report.json'
     archiveArtifacts artifacts: 'architecture-report.json'
   }
 }
