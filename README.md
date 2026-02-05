@@ -704,7 +704,7 @@ Contributions welcome! Please read our [Contributing Guide](CONTRIBUTING.md) fir
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/archguard.git
+git clone https://github.com/barbozaa/archguard.git
 cd archguard
 
 # Install dependencies
