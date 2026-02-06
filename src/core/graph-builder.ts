@@ -1,6 +1,6 @@
 import { Project, SourceFile } from 'ts-morph';
-import { relative, dirname, resolve } from 'path';
-import { DependencyGraph, DependencyNode } from './types.js';
+import { relative } from 'path';
+import { DependencyGraph, DependencyNode } from '@core/types.js';
 
 /**
  * Builds dependency graph from TypeScript project
@@ -59,54 +59,26 @@ export class GraphBuilder {
     for (const importDecl of importDeclarations) {
       const moduleSpecifier = importDecl.getModuleSpecifierValue();
       
-      // Skip external modules
+      // Skip external modules (packages from node_modules)
       if (!moduleSpecifier.startsWith('.') && !moduleSpecifier.startsWith('/')) {
         continue;
       }
 
-      // Resolve the import
-      const sourceFilePath = sourceFile.getFilePath();
-      const sourceFileDir = dirname(sourceFilePath);
+      // Use ts-morph's built-in resolution - handles .ts/.js/.tsx automatically
+      const importedFile = importDecl.getModuleSpecifierSourceFile();
       
-      try {
-        const resolvedPath = this.resolveImport(
-          moduleSpecifier,
-          sourceFileDir,
-          rootPath
-        );
+      if (importedFile) {
+        const importedPath = importedFile.getFilePath();
         
-        if (resolvedPath) {
+        // Skip node_modules
+        if (!importedPath.includes('node_modules')) {
+          const resolvedPath = relative(rootPath, importedPath);
           dependencies.add(resolvedPath);
         }
-      } catch {
-        // Skip unresolvable imports
       }
     }
 
     return dependencies;
-  }
-
-  private resolveImport(
-    moduleSpecifier: string,
-    fromDir: string,
-    rootPath: string
-  ): string | null {
-    // Simple resolution - in production, use enhanced-resolve
-    let resolved = resolve(fromDir, moduleSpecifier);
-
-    // Try adding extensions
-    const extensions = ['.ts', '.tsx', '.js', '/index.ts', '/index.tsx'];
-    
-    for (const ext of extensions) {
-      try {
-        const candidate = resolved + ext;
-        return relative(rootPath, candidate);
-      } catch {
-        continue;
-      }
-    }
-
-    return relative(rootPath, resolved);
   }
 
   private detectCycles(nodes: Map<string, DependencyNode>): string[][] {

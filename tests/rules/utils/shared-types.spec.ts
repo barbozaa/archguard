@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Project, SourceFile } from 'ts-morph';
-import { FileCheckContext, ViolationData } from '../../../src/rules/utils/shared-types.js';
+import { Project } from 'ts-morph';
+import { FileCheckContext, ViolationData } from '@rules/utils/shared-types.js';
 
 describe('Shared Types', () => {
   describe('FileCheckContext', () => {

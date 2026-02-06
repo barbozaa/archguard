@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { RiskRanker } from '../../src/output/risk-ranker.js';
-import type { Violation } from '../../src/core/types.js';
+import { RiskRanker } from '@output/risk-ranker.js';
+import type { Violation } from '@core/types.js';
 
 describe('RiskRanker', () => {
   it('should create risk ranker instance', () => {
@@ -59,11 +59,11 @@ describe('RiskRanker', () => {
   it('should count violations by severity', () => {
     const ranker = new RiskRanker();
     const violations: Violation[] = [
-      { type: 'Test', message: '', file: '', severity: 'critical', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
-      { type: 'Test', message: '', file: '', severity: 'critical', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
-      { type: 'Test', message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
-      { type: 'Test', message: '', file: '', severity: 'info', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
-      { type: 'Test', message: '', file: '', severity: 'info', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
+      { message: '', file: '', severity: 'critical', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
+      { message: '', file: '', severity: 'critical', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
+      { message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
+      { message: '', file: '', severity: 'info', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
+      { message: '', file: '', severity: 'info', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
     ];
 
     const counts = ranker.countBySeverity(violations);
@@ -81,9 +81,9 @@ describe('RiskRanker', () => {
   it('should rank by penalty when severity is equal', () => {
     const ranker = new RiskRanker();
     const violations: Violation[] = [
-      { type: 'Test', message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 5 },
-      { type: 'Test', message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 10 },
-      { type: 'Test', message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 3 },
+      { message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 5 },
+      { message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 10 },
+      { message: '', file: '', severity: 'warning', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 3 },
     ];
 
     const ranked = ranker.rank(violations, 3);
@@ -95,8 +95,8 @@ describe('RiskRanker', () => {
   it('should maintain severity priority over penalty', () => {
     const ranker = new RiskRanker();
     const violations: Violation[] = [
-      { type: 'Test', message: '', file: '', severity: 'info', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 100 },
-      { type: 'Test', message: '', file: '', severity: 'critical', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
+      { message: '', file: '', severity: 'info', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 100 },
+      { message: '', file: '', severity: 'critical', rule: 'test', line: 11, impact: '', suggestedFix: '', penalty: 1 },
     ];
 
     const ranked = ranker.rank(violations, 2);

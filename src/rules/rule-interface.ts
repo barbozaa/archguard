@@ -1,5 +1,5 @@
-import { Violation } from '../core/types.js';
-import { RuleContext } from '../core/rule-context.js';
+import { Violation } from '@core/types.js';
+import { RuleContext } from '@core/rule-context.js';
 
 /**
  * Rule interface that all rules must implement

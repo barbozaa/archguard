@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { TerminalReporter } from '../../src/output/terminal-reporter.js';
-import type { AnalysisResult } from '../../src/core/types.js';
+import { TerminalReporter } from '@output/terminal-reporter.js';
+import type { AnalysisResult } from '@core/types.js';
 
 describe('TerminalReporter', () => {
   let reporter: TerminalReporter;
@@ -19,6 +19,8 @@ describe('TerminalReporter', () => {
     const result: AnalysisResult = {
       violations: [],
       score: 100,
+      architectureScore: 100,
+      hygieneScore: 100,
       totalModules: 10,
       healthyModuleCount: 10,
       status: 'Excellent',
@@ -48,6 +50,8 @@ describe('TerminalReporter', () => {
         }
       ],
       score: 85,
+      architectureScore: 88,
+      hygieneScore: 82,
       totalModules: 10,
       healthyModuleCount: 9,
       status: 'Healthy',
@@ -66,6 +70,8 @@ describe('TerminalReporter', () => {
     const result: AnalysisResult = {
       violations: [],
       score: 100,
+      architectureScore: 100,
+      hygieneScore: 100,
       totalModules: 5,
       healthyModuleCount: 5,
       status: 'Excellent',
@@ -105,6 +111,8 @@ describe('TerminalReporter', () => {
         }
       ],
       score: 70,
+      architectureScore: 65,
+      hygieneScore: 75,
       totalModules: 2,
       healthyModuleCount: 0,
       status: 'Needs Attention',
@@ -134,6 +142,8 @@ describe('TerminalReporter', () => {
         }
       ],
       score: 80,
+      architectureScore: 82,
+      hygieneScore: 78,
       totalModules: 5,
       healthyModuleCount: 4,
       status: 'Healthy',
@@ -145,6 +155,10 @@ describe('TerminalReporter', () => {
         file: 'app.ts',
         line: 10,
         severity: 'warning',
+        rule: 'Large Function',
+        impact: 'Readability',
+        suggestedFix: 'Split function',
+        penalty: 10
       }],
       timestamp: new Date().toISOString(),
       projectName: 'test-project'
@@ -168,6 +182,8 @@ describe('TerminalReporter', () => {
         }
       ],
       score: 65,
+      architectureScore: 60,
+      hygieneScore: 70,
       totalModules: 3,
       healthyModuleCount: 1,
       status: 'Needs Attention',
@@ -217,6 +233,8 @@ describe('TerminalReporter', () => {
         }
       ],
       score: 50,
+      architectureScore: 45,
+      hygieneScore: 55,
       totalModules: 10,
       healthyModuleCount: 7,
       status: 'Needs Attention',
@@ -246,6 +264,8 @@ describe('TerminalReporter', () => {
         }
       ],
       score: 88,
+      architectureScore: 90,
+      hygieneScore: 86,
       totalModules: 8,
       healthyModuleCount: 7,
       status: 'Healthy',

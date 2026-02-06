@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import * as ViolationSummaries from '../../src/output/violation-summaries.js';
+import * as ViolationSummaries from '@output/violation-summaries.js';
 
 describe('Violation Summaries', () => {
   it('should export all structure violation summaries', () => {
@@ -14,7 +14,6 @@ describe('Violation Summaries', () => {
     expect(ViolationSummaries.printSkippedTestsSummary).toBeDefined();
     expect(ViolationSummaries.printMissingTypeAnnotationsSummary).toBeDefined();
     expect(ViolationSummaries.printUnusedExportsSummary).toBeDefined();
-    expect(ViolationSummaries.printDeadCodeSummary).toBeDefined();
   });
 
   it('should export all complexity violation summaries', () => {

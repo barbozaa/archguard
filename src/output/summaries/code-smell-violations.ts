@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { Violation } from '../../core/types.js';
+import { Violation } from '@core/types.js';
 
 export function printFeatureEnvySummary(violations: Violation[]): void {
   console.log(pc.dim('  Impact: ') + 'Violates encapsulation and creates tight coupling');

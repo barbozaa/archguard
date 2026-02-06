@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createRuleContext } from '../../src/core/rule-context.js';
+import { createRuleContext } from '@core/rule-context.js';
 import { Project } from 'ts-morph';
-import type { DependencyGraph } from '../../src/core/types.js';
+import type { DependencyGraph } from '@core/types.js';
 
 describe('RuleContext', () => {
   it('should create rule context', () => {
@@ -10,7 +10,7 @@ describe('RuleContext', () => {
       nodes: new Map(),
       cyclicGroups: []
     };
-    const config = { srcDirectory: './src', rules: { maxFileLines: 500, } };
+    const config = { srcDirectory: './src', rules: { maxFileLines: 500 } };
     
     const context = createRuleContext(project, graph, config, '/test');
     
@@ -26,12 +26,18 @@ describe('RuleContext', () => {
       nodes: new Map(),
       cyclicGroups: []
     };
-    const config = { srcDirectory: './src', rules: { maxFileLines: 500, test: true  } };
+    const config = { 
+      srcDirectory: './src', 
+      rules: { 
+        maxFileLines: 500,
+        layerRules: { 'core': ['config', 'utils'] }
+      } 
+    };
     
     const context = createRuleContext(project, graph, config, '/test');
     
     expect(context.config).toBeDefined();
-    expect(context.config.rules.test).toBe(true);
+    expect(context.config.rules?.layerRules).toBeDefined();
   });
 
   it('should have config with rules', () => {
@@ -40,7 +46,7 @@ describe('RuleContext', () => {
       nodes: new Map(),
       cyclicGroups: []
     };
-    const config = { srcDirectory: './src', rules: { maxFileLines: 500, } };
+    const config = { srcDirectory: './src', rules: { maxFileLines: 500 } };
     
     const context = createRuleContext(project, graph, config, '/test');
     

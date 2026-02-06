@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as codeSmellViolations from '../../../src/output/summaries/code-smell-violations.js';
-import type { Violation } from '../../../src/core/types.js';
+import * as codeSmellViolations from '@output/summaries/code-smell-violations.js';
+import type { Violation } from '@core/types.js';
 
 describe('Code Smell Violations Summaries', () => {
   beforeEach(() => {

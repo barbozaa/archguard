@@ -16,8 +16,7 @@ export {
   printMissingTestsSummary,
   printSkippedTestsSummary,
   printMissingTypeAnnotationsSummary,
-  printUnusedExportsSummary,
-  printDeadCodeSummary
+  printUnusedExportsSummary
 } from './summaries/quality-violations.js';
 
 // Complexity-related violations (function/method complexity)

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { Rule } from '../../src/rules/rule-interface.js';
-import { Violation } from '../../src/core/types.js';
-import { RuleContext } from '../../src/core/rule-context.js';
+import { Rule } from '@rules/rule-interface.js';
+import { Violation } from '@core/types.js';
+import { RuleContext } from '@core/rule-context.js';
 import { Project } from 'ts-morph';
 
 describe('Rule Interface', () => {
@@ -56,7 +56,7 @@ describe('Rule Interface', () => {
       severity: 'info' | 'warning' | 'critical' = 'warning';
       penalty = 3;
 
-      check(context: RuleContext): Violation[] {
+      check(_: RuleContext): Violation[] {
         return [{
           rule: this.name,
           severity: this.severity,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateNextActions } from '../../src/output/action-generator.js';
-import type { AnalysisResult } from '../../src/core/types.js';
+import { generateNextActions } from '@output/action-generator.js';
+import type { AnalysisResult } from '@core/types.js';
 
 describe('Action Generator', () => {
   it('should generate actions for violations', () => {
@@ -18,6 +18,8 @@ describe('Action Generator', () => {
         }
       ],
       score: 80,
+      architectureScore: 85,
+      hygieneScore: 75,
       status: 'Healthy',
       criticalCount: 1,
       warningCount: 0,
@@ -59,6 +61,8 @@ describe('Action Generator', () => {
         }
       ],
       score: 60,
+      architectureScore: 65,
+      hygieneScore: 55,
       status: 'Needs Attention',
       criticalCount: 1,
       warningCount: 0,
@@ -78,6 +82,8 @@ describe('Action Generator', () => {
     const result: AnalysisResult = {
       violations: [],
       score: 100,
+      architectureScore: 100,
+      hygieneScore: 100,
       status: 'Excellent',
       criticalCount: 0,
       warningCount: 0,
@@ -109,6 +115,8 @@ describe('Action Generator', () => {
         }
       ],
       score: 85,
+      architectureScore: 90,
+      hygieneScore: 80,
       status: 'Healthy',
       criticalCount: 0,
       warningCount: 1,

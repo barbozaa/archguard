@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { CyclomaticComplexityRule } from '../../src/rules/cyclomatic-complexity.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { CyclomaticComplexityRule } from '@rules/cyclomatic-complexity.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('CyclomaticComplexityRule', () => {
   let project: Project;

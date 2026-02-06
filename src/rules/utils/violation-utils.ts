@@ -3,7 +3,7 @@
  * Consolidated from rule-helpers.ts to eliminate duplication
  */
 
-import { Violation, Severity } from '../../core/types.js';
+import { Violation, Severity } from '@core/types.js';
 
 /**
  * Calculate severity based on count vs threshold

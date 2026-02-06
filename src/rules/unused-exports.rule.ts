@@ -1,5 +1,5 @@
 import { Rule } from './rule-interface.js';
-import { Violation, RuleContext, Severity } from '../core/types.js';
+import { Violation, RuleContext, Severity } from '@core/types.js';
 import { processSourceFiles } from './utils/rule-helpers.js';
 import { Project, type SourceFile, type Node } from 'ts-morph';
 import { createViolation } from './utils/violation-utils.js';

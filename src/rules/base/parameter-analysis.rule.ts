@@ -1,8 +1,8 @@
 import { SourceFile, FunctionDeclaration, MethodDeclaration, ConstructorDeclaration, ArrowFunction, VariableDeclaration, Node } from 'ts-morph';
 import { relative } from 'path';
-import { Rule } from '../rule-interface.js';
-import { Violation, Severity } from '../../core/types.js';
-import { RuleContext } from '../../core/rule-context.js';
+import { Rule } from '@rules/rule-interface.js';
+import { Violation, Severity } from '@core/types.js';
+import { RuleContext } from '@core/rule-context.js';
 
 /**
  * Base class for rules that analyze function parameters across all source files

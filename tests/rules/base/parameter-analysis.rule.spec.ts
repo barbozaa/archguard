@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
-import { ParameterAnalysisRule } from '../../../src/rules/base/parameter-analysis.rule.js';
-import { RuleContext } from '../../../src/core/rule-context.js';
-import { Violation, Severity } from '../../../src/core/types.js';
+import { ParameterAnalysisRule } from '@rules/base/parameter-analysis.rule.js';
+import { RuleContext } from '@core/rule-context.js';
+import { Violation, Severity } from '@core/types.js';
 import { FunctionDeclaration, MethodDeclaration, ConstructorDeclaration, ArrowFunction, VariableDeclaration } from 'ts-morph';
 
 /**
@@ -97,12 +97,12 @@ class TestParameterAnalysisRule extends ParameterAnalysisRule {
 describe('ParameterAnalysisRule', () => {
   it('should process functions with many parameters', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'test.ts',
-      `function testFunc(a: number, b: string, c: boolean) {
+    
+    project.createSourceFile('/test/myfile.ts', `
+      function myFunc(a: string, b: number, c: boolean) {
         return a + b + c;
-      }`
-    );
+      }
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {
@@ -120,14 +120,14 @@ describe('ParameterAnalysisRule', () => {
 
   it('should process methods in classes', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'test.ts',
-      `class TestClass {
-        myMethod(a: number, b: string, c: boolean) {
+    
+    project.createSourceFile('/test/myfile.ts', `
+      class TestClass {
+        myMethod(a: string, b: number, c: boolean) {
           return a + b + c;
         }
-      }`
-    );
+      }
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {
@@ -145,14 +145,14 @@ describe('ParameterAnalysisRule', () => {
 
   it('should process constructors', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'test.ts',
-      `class TestClass {
-        constructor(a: number, b: string, c: boolean) {
-          this.a = a;
+    
+    project.createSourceFile('/test/myfile.ts', `
+      class TestClass {
+        constructor(a: string, b: number, c: boolean) {
+          // constructor body
         }
-      }`
-    );
+      }
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {
@@ -170,12 +170,12 @@ describe('ParameterAnalysisRule', () => {
 
   it('should process arrow functions', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'test.ts',
-      `const myArrow = (a: number, b: string, c: boolean) => {
+    
+    project.createSourceFile('/test/myfile.ts', `
+      const myArrow = (a: string, b: number, c: boolean) => {
         return a + b + c;
-      };`
-    );
+      };
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {
@@ -193,12 +193,12 @@ describe('ParameterAnalysisRule', () => {
 
   it('should skip node_modules files by default', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'node_modules/test.ts',
-      `function testFunc(a: number, b: string, c: boolean) {
+    
+    project.createSourceFile('/test/node_modules/package/file.ts', `
+      function myFunc(a: string, b: number, c: boolean) {
         return a + b + c;
-      }`
-    );
+      }
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {
@@ -215,10 +215,10 @@ describe('ParameterAnalysisRule', () => {
 
   it('should skip .d.ts files by default', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'test.d.ts',
-      `function testFunc(a: number, b: string, c: boolean): void;`
-    );
+    
+    project.createSourceFile('/test/types.d.ts', `
+      declare function myFunc(a: string, b: number, c: boolean): void;
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {
@@ -235,19 +235,26 @@ describe('ParameterAnalysisRule', () => {
 
   it('should process multiple types in same file', () => {
     const project = new Project({ useInMemoryFileSystem: true });
-    const sourceFile = project.createSourceFile(
-      'test.ts',
-      `
-      function standalone(a: number, b: string, c: boolean) {}
-      
-      class MyClass {
-        constructor(a: number, b: string, c: boolean) {}
-        method(a: number, b: string, c: boolean) {}
+    
+    project.createSourceFile('/test/myfile.ts', `
+      function myFunc(a: string, b: number, c: boolean) {
+        return a + b + c;
       }
       
-      const arrow = (a: number, b: string, c: boolean) => {};
-      `
-    );
+      class TestClass {
+        constructor(x: string, y: number, z: boolean) {
+          // constructor
+        }
+        
+        myMethod(p: string, q: number, r: boolean) {
+          return p + q + r;
+        }
+      }
+      
+      const myArrow = (i: string, j: number, k: boolean) => {
+        return i + j + k;
+      };
+    `);
 
     const rule = new TestParameterAnalysisRule();
     const context: RuleContext = {

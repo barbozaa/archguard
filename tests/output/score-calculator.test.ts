@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ScoreCalculator } from '../../src/output/score-calculator.js';
-import { Violation } from '../../src/core/types.js';
+import { ScoreCalculator } from '@output/score-calculator.js';
+import { Violation } from '@core/types.js';
 
 describe('ScoreCalculator', () => {
   it('should start at 100 with no violations', () => {

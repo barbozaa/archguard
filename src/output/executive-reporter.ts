@@ -1,6 +1,7 @@
 import pc from 'picocolors';
+import { basename } from 'path';
 import { Reporter } from './reporter-interface.js';
-import { AnalysisResult, Violation } from '../core/types.js';
+import { AnalysisResult, Violation } from '@core/types.js';
 import { ScoreCalculator } from './score-calculator.js';
 import {
   getSeverityIcon,
@@ -15,8 +16,7 @@ import {
  */
 export class ExecutiveReporter implements Reporter {
   private static readonly REPORT_WIDTH = 78;
-  private static readonly PADDING_WITH_BORDER = 92;
-  private static readonly PADDING_WITH_ICONS = 90;
+  private static readonly BOX_INNER_WIDTH = 70; // Width inside the box accounting for emoji visual width
   private static readonly TOP_CRITICAL_LIMIT = 5;
   private static readonly TOP_WARNINGS_LIMIT = 3;
   private static readonly TOP_RULES_LIMIT = 3;
@@ -24,6 +24,21 @@ export class ExecutiveReporter implements Reporter {
   private static readonly PENALTY_IMPROVEMENT_FACTOR = 0.6;
 
   private readonly scoreCalculator = new ScoreCalculator();
+
+  /**
+   * Remove ANSI color codes to get actual text length
+   */
+  private stripAnsi(str: string): string {
+    return str.replace(/\u001b\[[0-9;]*m/g, '');
+  }
+
+  /**
+   * Get the actual character count using Array.from to handle Unicode properly
+   */
+  private getPlainTextLength(str: string): number {
+    const plain = this.stripAnsi(str);
+    return Array.from(plain).length;
+  }
 
   report(result: AnalysisResult, _: boolean): void {
     console.log();
@@ -60,36 +75,103 @@ export class ExecutiveReporter implements Reporter {
   }
 
   private printArchitectureScore(result: AnalysisResult): void {
-    const grade = this.scoreCalculator.getGrade(result.score);
-    const scoreColor = getScoreColor(result.score);
+    const grade = this.scoreCalculator.getGrade(result.architectureScore);
+    const scoreColor = getScoreColor(result.architectureScore);
     const statusIcon = getStatusIcon(result.status);
     const statusColor = getStatusColor(result.status);
 
     console.log(pc.bold('┌─────────────────────────────────────────────────────────────────────────┐'));
-    console.log(pc.bold(`│  ARCHITECTURE HEALTH SCORE: ${scoreColor(pc.bold(result.score.toString()))} / 100  [${grade}]`).padEnd(ExecutiveReporter.PADDING_WITH_BORDER) + pc.bold('│'));
+    
+    // Architecture Health Score
+    const titleText = `ARCHITECTURE HEALTH: ${scoreColor(pc.bold(result.architectureScore.toString()))} / 100  [${grade}]`;
+    const titleLen = this.getPlainTextLength(titleText);
+    console.log(pc.bold(`│  ${titleText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - titleLen)} │`));
+    
+    // Hygiene Score
+    const hygieneGrade = this.scoreCalculator.getGrade(result.hygieneScore);
+    const hygieneColor = getScoreColor(result.hygieneScore);
+    const hygText = `HYGIENE SCORE: ${hygieneColor(result.hygieneScore.toString())} / 100  [${hygieneGrade}]`;
+    const hygLen = this.getPlainTextLength(hygText);
+    console.log(pc.bold(`│  ${hygText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - hygLen)} │`));
+    
     console.log(pc.bold('│                                                                         │'));
-    console.log(pc.bold(`│  Status: ${statusColor(`${statusIcon} ${result.status}`)}`.padEnd(ExecutiveReporter.PADDING_WITH_BORDER)) + pc.bold('│'));
+    
+    // Status line
+    const statusText = `Status: ${statusColor(`${statusIcon} ${result.status}`)}`;
+    const statusLen = this.getPlainTextLength(statusText);
+    console.log(pc.bold(`│  ${statusText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - statusLen - 1)} │`));
+    
+    // Confidence level
+    if (result.confidenceLevel) {
+      const confColor = result.confidenceLevel === 'HIGH' ? pc.green : result.confidenceLevel === 'MEDIUM' ? pc.yellow : pc.red;
+      const confText = `Confidence: ${confColor(result.confidenceLevel)} (${result.modulesAnalyzedPercent?.toFixed(0)}% analyzed)`;
+      const confLen = this.getPlainTextLength(confText);
+      console.log(pc.bold(`│  ${confText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - confLen)} │`));
+    }
     
     if (result.scoreBreakdown) {
       console.log(pc.bold('│                                                                         │'));
-      console.log(pc.bold('│  Risk Breakdown:                                                        │'));
+      console.log(pc.bold('│  Architecture Components (weighted):                                    │'));
       
       const { structural, design, complexity, hygiene } = result.scoreBreakdown;
       
       if (structural.violations > 0) {
         const impact = structural.impact === 'HIGH' ? pc.red('HIGH RISK') : structural.impact;
-        console.log(pc.bold(`│    🔴 Structural:  ${structural.violations} issues  -${structural.penalty.toFixed(1)} pts  ${impact}`.padEnd(ExecutiveReporter.PADDING_WITH_ICONS)) + pc.bold('│'));
+        const text = `  🔴 Structural (40%):  ${structural.violations} issues  -${structural.penalty.toFixed(1)} pts  ${impact}`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc.bold(`│  ${text}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - len)} │`));
       }
       if (design.violations > 0) {
         const impact = design.impact === 'HIGH' ? pc.yellow('MEDIUM RISK') : design.impact;
-        console.log(pc.bold(`│    ⚠️  Design:      ${design.violations} issues  -${design.penalty.toFixed(1)} pts  ${impact}`.padEnd(ExecutiveReporter.PADDING_WITH_ICONS)) + pc.bold('│'));
+        const text = `  ⚠️  Design (30%):      ${design.violations} issues  -${design.penalty.toFixed(1)} pts  ${impact}`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc.bold(`│  ${text}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - len + 1)} │`));
       }
       if (complexity.violations > 0) {
-        console.log(pc.bold(`│    ℹ️  Complexity:  ${complexity.violations} issues  -${complexity.penalty.toFixed(1)} pts`.padEnd(ExecutiveReporter.PADDING_WITH_ICONS)) + pc.bold('│'));
+        const text = `  ℹ️  Complexity (20%):  ${complexity.violations} issues  -${complexity.penalty.toFixed(1)} pts`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc.bold(`│  ${text}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - len + 1)} │`));
       }
+      
+      console.log(pc.bold('│                                                                         │'));
+      console.log(pc.bold('│  Code Hygiene (separate metric):                                        │'));
+      
       if (hygiene.violations > 0) {
-        console.log(pc.bold(`│    🧹 Hygiene:     ${hygiene.violations} issues  -${hygiene.penalty.toFixed(1)} pts`.padEnd(ExecutiveReporter.PADDING_WITH_ICONS)) + pc.bold('│'));
+        const text = `  🧹 Hygiene (10%):     ${hygiene.violations} issues  -${hygiene.penalty.toFixed(1)} pts`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc.bold(`│  ${text}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - len - 1)} │`));
       }
+    }
+    
+    // Add coupling risk metrics if available
+    if (result.couplingRisk && result.couplingRisk.totalModules > 0) {
+      console.log(pc.bold('│                                                                         │'));
+      console.log(pc.bold('│  Coupling Metrics:                                                      │'));
+      
+      const { couplingRisk } = result;
+      const riskLevel = this.getRiskLevel(couplingRisk.overallRisk);
+      const riskColor = this.getRiskColor(couplingRisk.overallRisk);
+      
+      const riskText = `  🔥 Coupling Risk: ${riskColor(couplingRisk.overallRisk.toFixed(1))}/100 [${riskLevel}]`;
+      const riskLen = this.getPlainTextLength(riskText);
+      console.log(pc.bold(`│  ${riskText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - riskLen - 1)} │`));
+      
+      const modulesText = `     ${couplingRisk.totalModules} modules, ${couplingRisk.projectAverageCe.toFixed(1)} avg deps, ${(couplingRisk.projectAverageInstability * 100).toFixed(0)}% instability`;
+      const modulesLen = this.getPlainTextLength(modulesText);
+      console.log(pc.bold(`│  ${modulesText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - modulesLen)} │`));
+    }
+    
+    // Add blast radius if available
+    if (result.blastRadius && result.blastRadius.length > 0) {
+      console.log(pc.bold('│                                                                         │'));
+      console.log(pc.bold('│  ⚡ Blast Radius (Top Change Impact):                                   │'));
+      const top3 = result.blastRadius.slice(0, 3);
+      top3.forEach(module => {
+        const fileName = basename(module.modulePath);
+        const impactText = `     ${fileName} → ${module.affectedModules} modules affected`;
+        const impactLen = this.getPlainTextLength(impactText);
+        console.log(pc.bold(`│  ${impactText}${' '.repeat(ExecutiveReporter.BOX_INNER_WIDTH - impactLen)} │`));
+      });
     }
     
     console.log(pc.bold('└─────────────────────────────────────────────────────────────────────────┘'));
@@ -215,4 +297,19 @@ export class ExecutiveReporter implements Reporter {
     const totalPenalty = violations.reduce((sum, v) => sum + v.penalty, 0);
     return Math.round(totalPenalty * ExecutiveReporter.PENALTY_IMPROVEMENT_FACTOR);
   }
+
+  private getRiskLevel(risk: number): string {
+    if (risk >= 75) return 'EXTREME';
+    if (risk >= 50) return 'HIGH';
+    if (risk >= 25) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  private getRiskColor(risk: number): (text: string) => string {
+    if (risk >= 75) return pc.red;
+    if (risk >= 50) return pc.yellow;
+    if (risk >= 25) return pc.cyan;
+    return pc.green;
+  }
 }
+

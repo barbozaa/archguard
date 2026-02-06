@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Reporter } from '../../src/output/reporter-interface.js';
-import { AnalysisResult, HealthStatus } from '../../src/core/types.js';
+import { Reporter } from '@output/reporter-interface.js';
+import { AnalysisResult, HealthStatus } from '@core/types.js';
 
 describe('Reporter Interface', () => {
   it('should be implementable by concrete reporters', () => {
@@ -19,6 +19,8 @@ describe('Reporter Interface', () => {
     const mockResult: AnalysisResult = {
       violations: [],
       score: 100,
+      architectureScore: 100,
+      hygieneScore: 100,
       status: 'Healthy' as HealthStatus,
       criticalCount: 0,
       warningCount: 0,
@@ -68,6 +70,8 @@ describe('Reporter Interface', () => {
     const mockResult: AnalysisResult = {
       violations: [],
       score: 85,
+      architectureScore: 88,
+      hygieneScore: 82,
       status: 'Needs Attention' as HealthStatus,
       criticalCount: 0,
       warningCount: 1,

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { CircularDepsRule } from '../../src/rules/circular-deps.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
-import { GraphBuilder } from '../../src/core/graph-builder.js';
+import { CircularDepsRule } from '@rules/circular-deps.rule.js';
+import type { RuleContext } from '@core/types.js';
+import { GraphBuilder } from '@core/graph-builder.js';
 
 describe('CircularDepsRule', () => {
   let project: Project;
@@ -31,8 +31,7 @@ describe('CircularDepsRule', () => {
       project,
       graph,
       config: { srcDirectory: '/test', rules: { maxFileLines: 500,  } },
-      rootPath: '/test',
-      graph: { nodes: new Map(), cyclicGroups: [] }
+      rootPath: '/test'
     };
 
     const violations = rule.check(context);
@@ -59,8 +58,7 @@ describe('CircularDepsRule', () => {
       project,
       graph,
       config: { srcDirectory: '/test', rules: { maxFileLines: 500,  } },
-      rootPath: '/test',
-      graph: { nodes: new Map(), cyclicGroups: [] }
+      rootPath: '/test'
     };
 
     const violations = rule.check(context);
@@ -85,8 +83,7 @@ describe('CircularDepsRule', () => {
       project,
       graph,
       config: { srcDirectory: '/test', rules: { maxFileLines: 500,  } },
-      rootPath: '/test',
-      graph: { nodes: new Map(), cyclicGroups: [] }
+      rootPath: '/test'
     };
 
     const violations = rule.check(context);

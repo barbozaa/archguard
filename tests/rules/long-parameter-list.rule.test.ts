@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
-import { LongParameterListRule } from '../../src/rules/long-parameter-list.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { LongParameterListRule } from '@rules/long-parameter-list.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('LongParameterListRule', () => {
   it('should detect long parameter lists', () => {

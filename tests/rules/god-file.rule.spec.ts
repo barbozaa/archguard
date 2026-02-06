@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { MaxFileLinesRule } from '../../src/rules/max-file-lines.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { MaxFileLinesRule } from '@rules/max-file-lines.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('MaxFileLinesRule', () => {
   let project: Project;

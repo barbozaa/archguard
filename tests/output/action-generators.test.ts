@@ -7,8 +7,8 @@ import {
   generateLargeFunctionActions,
   generateDeepNestingActions,
   generateBulkActions
-} from '../../src/output/action-generators.js';
-import type { Violation } from '../../src/core/types.js';
+} from '@output/action-generators.js';
+import type { Violation } from '@core/types.js';
 
 describe('Action Generators', () => {
   it('should generate circular dependency actions', () => {

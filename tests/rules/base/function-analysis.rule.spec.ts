@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { FunctionAnalysisRule } from '../../../src/rules/base/function-analysis.rule.js';
-import type { RuleContext, Violation } from '../../../src/core/types.js';
+import { FunctionAnalysisRule } from '@rules/base/function-analysis.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 class TestFunctionAnalysisRule extends FunctionAnalysisRule {
   name = 'test-rule';
@@ -74,7 +74,7 @@ describe('FunctionAnalysisRule', () => {
   });
 
   it('should analyze function declarations', () => {
-    const sourceFile = project.createSourceFile('test.ts', `
+    project.createSourceFile('test.ts', `
       function goodFunction() { return 1; }
       function badFunction() { return 2; }
     `);
@@ -92,7 +92,7 @@ describe('FunctionAnalysisRule', () => {
   });
 
   it('should analyze class methods', () => {
-    const sourceFile = project.createSourceFile('test.ts', `
+    project.createSourceFile('test.ts', `
       class TestClass {
         goodMethod() { return 1; }
         badMethod() { return 2; }
@@ -112,7 +112,7 @@ describe('FunctionAnalysisRule', () => {
   });
 
   it('should analyze arrow functions', () => {
-    const sourceFile = project.createSourceFile('test.ts', `
+    project.createSourceFile('test.ts', `
       const goodArrow = () => 1;
       const badArrow = () => 2;
     `);
@@ -130,7 +130,7 @@ describe('FunctionAnalysisRule', () => {
   });
 
   it('should skip node_modules files', () => {
-    const sourceFile = project.createSourceFile('node_modules/test.ts', `
+    project.createSourceFile('node_modules/test.ts', `
       function badFunction() { return 1; }
     `);
 
@@ -146,7 +146,7 @@ describe('FunctionAnalysisRule', () => {
   });
 
   it('should use threshold from config', () => {
-    const sourceFile = project.createSourceFile('test.ts', `
+    project.createSourceFile('test.ts', `
       function badFunction() { return 1; }
     `);
 
@@ -164,7 +164,7 @@ describe('FunctionAnalysisRule', () => {
   });
 
   it('should use default threshold when not in config', () => {
-    const sourceFile = project.createSourceFile('test.ts', `
+    project.createSourceFile('test.ts', `
       function badFunction() { return 1; }
     `);
 
@@ -223,7 +223,7 @@ describe('FunctionAnalysisRule', () => {
       });
 
       expect(violation.message).toContain('MyClass.myMethod');
-      expect(violation.message).toContain('lines of 100');
+      expect(violation.message).toContain('100 lines');
       expect(violation.severity).toBe('critical');
     });
 
@@ -245,7 +245,7 @@ describe('FunctionAnalysisRule', () => {
 
       expect(violation.message).toContain('Arrow function');
       expect(violation.message).toContain('myArrow');
-      expect(violation.message).toContain('nesting depth of 5');
+      expect(violation.message).toContain('nesting depth of 5 levels');
     });
   });
 });

@@ -2,7 +2,7 @@ import { FunctionDeclaration, MethodDeclaration } from 'ts-morph';
 import { FunctionAnalysisRule, FunctionCheckContext, ArrowFunctionCheckContext } from './base/function-analysis.rule.js';
 import { calculateSeverity, calculatePenalty, PenaltyConfig } from './utils/severity-calculator.js';
 import { createSeverityThresholds } from './utils/function-analysis-config.js';
-import { Severity } from '../core/types.js';
+import { Severity } from '@core/types.js';
 
 /**
  * Large Function Rule

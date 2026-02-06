@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
-import { ShotgunSurgeryRule } from '../../src/rules/shotgun-surgery.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { ShotgunSurgeryRule } from '@rules/shotgun-surgery.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('ShotgunSurgeryRule', () => {
   it('should detect shotgun surgery pattern', () => {

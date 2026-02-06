@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { DeepNestingRule } from '../../src/rules/deep-nesting.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { DeepNestingRule } from '@rules/deep-nesting.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('DeepNestingRule', () => {
   let project: Project;

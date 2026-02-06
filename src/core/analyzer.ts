@@ -1,11 +1,12 @@
-import { ProjectLoader } from './project-loader.js';
-import { GraphBuilder } from './graph-builder.js';
-import { Rule } from '../rules/rule-interface.js';
-import { AnalysisResult, DependencyGraph, RuleError } from './types.js';
-import { Config } from '../config/config-schema.js';
-import { ScoreCalculator } from '../output/score-calculator.js';
-import { RiskRanker } from '../output/risk-ranker.js';
-import { createRuleContext } from './rule-context.js';
+import { ProjectLoader } from '@core/project-loader.js';
+import { GraphBuilder } from '@core/graph-builder.js';
+import { CouplingRiskAnalyzer } from '@core/coupling-risk-analyzer.js';
+import { Rule } from '@rules/rule-interface.js';
+import { AnalysisResult, DependencyGraph, RuleError } from '@core/types.js';
+import { Config } from '@config/config-schema.js';
+import { ScoreCalculator } from '@output/score-calculator.js';
+import { RiskRanker } from '@output/risk-ranker.js';
+import { createRuleContext } from '@core/rule-context.js';
 import { readFileSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 
@@ -20,12 +21,11 @@ import {
   UnusedExportsRule,
   CyclomaticComplexityRule,
   DuplicateCodeRule,
-  DeadCodeRule,
   LongParameterListRule,
   DataClumpsRule,
   ShotgunSurgeryRule,
   MaxFileLinesRule,
-} from '../rules/index.js';
+} from '@rules/index.js';
 
 /**
  * Main analyzer that orchestrates the analysis process
@@ -52,13 +52,13 @@ export class Analyzer {
     // === CODE HEALTH ===
     new DuplicateCodeRule(),
     new UnusedExportsRule(),
-    new DeadCodeRule(),
   ];
 
   private projectLoader = new ProjectLoader();
   private graphBuilder = new GraphBuilder();
   private scoreCalculator = new ScoreCalculator();
   private riskRanker = new RiskRanker();
+  private couplingRiskAnalyzer = new CouplingRiskAnalyzer();
 
   async analyze(config: Config): Promise<AnalysisResult> {
     // Load project
@@ -86,7 +86,7 @@ export class Analyzer {
     const counts = this.riskRanker.countBySeverity(violations);
 
     // Calculate score with weighted penalty system
-    const { score, status, breakdown } = this.scoreCalculator.calculate(
+    const { score, architectureScore, hygieneScore, status, breakdown } = this.scoreCalculator.calculate(
       violations,
       actualModuleCount,
       totalLOC
@@ -102,9 +102,22 @@ export class Analyzer {
     // Get project name from package.json or directory
     const projectName = this.getProjectName(projectContext.rootPath);
 
+    // Analyze coupling risk (strategic architectural metric)
+    const couplingRisk = this.couplingRiskAnalyzer.analyze(graph, violations);
+
+    // Calculate Blast Radius: Top 5 modules with highest Ca (most dependents)
+    const blastRadius = this.calculateBlastRadius(graph);
+
+    // Calculate Confidence Score
+    // High confidence = many modules analyzed, no errors
+    const modulesAnalyzedPercent = 100; // All source files are analyzed
+    const confidenceLevel = this.calculateConfidenceLevel(actualModuleCount, errors.length > 0);
+
     const result: AnalysisResult = {
       violations,
       score,
+      architectureScore,
+      hygieneScore,
       status,
       criticalCount: counts.critical,
       warningCount: counts.warning,
@@ -116,6 +129,10 @@ export class Analyzer {
       projectName,
       scoreBreakdown: breakdown,
       totalLOC,
+      couplingRisk,
+      blastRadius,
+      confidenceLevel,
+      modulesAnalyzedPercent,
     };
 
     // Add rule errors if any occurred
@@ -187,5 +204,41 @@ export class Analyzer {
     }
     
     console.error(''); // Empty line for readability
+  }
+
+  /**
+   * Calculate Blast Radius: Top 5 modules with highest Ca (most dependents)
+   * These modules have the highest change impact
+   */
+  private calculateBlastRadius(graph: DependencyGraph): import('./types.js').BlastRadiusModule[] {
+    const modules = Array.from(graph.nodes.entries())
+      .map(([path, node]) => ({
+        modulePath: path,
+        affectedModules: node.dependents.size,
+      }))
+      .filter(m => m.affectedModules > 0) // Only modules with dependents
+      .sort((a, b) => b.affectedModules - a.affectedModules)
+      .slice(0, 5);
+
+    return modules;
+  }
+
+  /**
+   * Calculate Confidence Level based on analysis coverage
+   * HIGH: All modules analyzed successfully and no rule errors
+   * MEDIUM: Some modules analyzed or minor rule errors
+   * LOW: Rule errors occurred
+   */
+  private calculateConfidenceLevel(
+    totalModules: number,
+    hasRuleErrors: boolean
+  ): import('./types.js').ConfidenceLevel {
+    if (hasRuleErrors) {
+      return 'LOW';
+    }
+    if (totalModules >= 10) {
+      return 'HIGH'; // Sufficient modules for reliable analysis
+    }
+    return 'MEDIUM';
   }
 }

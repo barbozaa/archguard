@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
-import { DataClumpsRule } from '../../src/rules/data-clumps.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { DataClumpsRule } from '@rules/data-clumps.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('DataClumpsRule', () => {
   it('should detect data clumps in functions', () => {

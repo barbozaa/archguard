@@ -1,4 +1,4 @@
-import { Violation, HealthStatus, ScoreBreakdown } from '../core/types.js';
+import { Violation, HealthStatus, ScoreBreakdown } from '@core/types.js';
 import { PenaltyCalculator } from './penalty-calculator.js';
 
 /**
@@ -17,20 +17,34 @@ export class ScoreCalculator {
     totalLOC?: number
   ): {
     score: number;
+    architectureScore: number;
+    hygieneScore: number;
     status: HealthStatus;
     breakdown?: ScoreBreakdown;
   } {
     // Use weighted penalty calculation if LOC available
     if (totalLOC && totalLOC > 0) {
       const breakdown = this.penaltyCalculator.calculatePenalty(violations, totalLOC);
-      const rawScore = ScoreCalculator.STARTING_SCORE - breakdown.normalizedPenalty;
-      const score = Math.max(
-        ScoreCalculator.MIN_SCORE, 
-        Math.min(ScoreCalculator.MAX_SCORE, Math.round(rawScore))
+      
+      // Architecture Health Score (excludes hygiene)
+      const rawArchitectureScore = ScoreCalculator.STARTING_SCORE - breakdown.architecturePenalty;
+      const architectureScore = Math.max(
+        ScoreCalculator.MIN_SCORE,
+        Math.min(ScoreCalculator.MAX_SCORE, Math.round(rawArchitectureScore))
       );
-      const status = this.getStatus(score);
+      
+      // Hygiene Score (separate)
+      const rawHygieneScore = ScoreCalculator.STARTING_SCORE - breakdown.hygienePenalty;
+      const hygieneScore = Math.max(
+        ScoreCalculator.MIN_SCORE,
+        Math.min(ScoreCalculator.MAX_SCORE, Math.round(rawHygieneScore))
+      );
+      
+      // Overall score (for backward compatibility) - weighted combination
+      const score = Math.round(architectureScore * 0.9 + hygieneScore * 0.1);
+      const status = this.getStatus(architectureScore); // Status based on architecture score
 
-      return { score, status, breakdown };
+      return { score, architectureScore, hygieneScore, status, breakdown };
     }
 
     // Fallback to legacy calculation for backward compatibility
@@ -39,6 +53,8 @@ export class ScoreCalculator {
 
   private calculateLegacy(violations: Violation[], totalModules: number): {
     score: number;
+    architectureScore: number;
+    hygieneScore: number;
     status: HealthStatus;
   } {
     let totalPenalty = 0;
@@ -54,11 +70,13 @@ export class ScoreCalculator {
 
     // Calculate final score
     const score = Math.max(ScoreCalculator.MIN_SCORE, Math.round(ScoreCalculator.STARTING_SCORE - adjustedPenalty));
+    const architectureScore = score; // Same as overall in legacy mode
+    const hygieneScore = score; // Same as overall in legacy mode
 
     // Determine status
     const status = this.getStatus(score);
 
-    return { score, status };
+    return { score, architectureScore, hygieneScore, status };
   }
 
   private calculateScalingFactor(totalModules: number, violationCount: number): number {

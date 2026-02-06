@@ -1,8 +1,8 @@
 import { Project, SourceFile } from 'ts-morph';
 import { resolve, relative } from 'path';
-import { ProjectContext } from './types.js';
-import { Config } from '../config/config-schema.js';
-import { shouldSkipNodeModules, isTestFile } from '../rules/utils/rule-helpers.js';
+import { ProjectContext } from '@core/types.js';
+import { Config } from '@config/config-schema.js';
+import { shouldSkipNodeModules, isTestFile } from '@rules/utils/rule-helpers.js';
 
 /**
  * Loads and parses TypeScript project using ts-morph

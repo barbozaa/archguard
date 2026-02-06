@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { Reporter } from './reporter-interface.js';
-import { AnalysisResult, Violation } from '../core/types.js';
+import { AnalysisResult, Violation } from '@core/types.js';
 import { groupViolationsByType } from './utils/violation-utils.js';
 import {
   getSeverityIcon,
@@ -30,7 +30,6 @@ import {
   printDuplicateCodeSummary,
   printLayerViolationSummary,
   printForbiddenImportSummary,
-  printDeadCodeSummary,
   printLongParameterListSummary,
   printFeatureEnvySummary,
   printDataClumpsSummary,
@@ -64,7 +63,6 @@ const SUMMARY_PRINTERS: Record<string, (violations: Violation[]) => void> = {
   'Duplicate Code': printDuplicateCodeSummary,
   'Layer Violation': printLayerViolationSummary,
   'Forbidden Import': printForbiddenImportSummary,
-  'Dead Code': printDeadCodeSummary,
   'Long Parameter List': printLongParameterListSummary,
   'Feature Envy': printFeatureEnvySummary,
   'Data Clump': printDataClumpsSummary,
@@ -168,6 +166,16 @@ export class TerminalReporter implements Reporter {
     // Hygiene
     const hygieneIcon = this.getCategoryIcon(hygiene.impact);
     console.log(`    ${hygieneIcon} Hygiene:      ${this.formatCategoryLine(hygiene)}`);
+
+    // Add explanation
+    console.log();
+    console.log(pc.dim('  Categories:'));
+    console.log(pc.dim('    • Structural:  Architecture violations (circular deps, layer violations)'));
+    console.log(pc.dim('    • Design:      Coupling and design patterns (imports, parameters, code smells)'));
+    console.log(pc.dim('    • Complexity:  Code complexity (nesting, function size, cyclomatic complexity)'));
+    console.log(pc.dim('    • Hygiene:     Code cleanliness (duplicates, dead code, unused exports)'));
+    console.log();
+    console.log(pc.dim('  Points: Penalty deducted from score (100 base). Impact: 🔴 HIGH | ⚠️  MEDIUM | ℹ️  LOW'));
   }
 
   private getCategoryIcon(impact: 'HIGH' | 'MEDIUM' | 'LOW'): string {
@@ -205,6 +213,16 @@ export class TerminalReporter implements Reporter {
     if (result.totalLOC) {
       console.log(`  Total Lines of Code:   ${pc.cyan(result.totalLOC.toLocaleString())}`);
     }
+    
+    // Show coupling metrics if available
+    if (result.couplingRisk && result.couplingRisk.totalModules > 0) {
+      const { couplingRisk } = result;
+      const riskLevel = this.getCouplingRiskLevel(couplingRisk.overallRisk);
+      const riskColor = this.getCouplingRiskColor(couplingRisk.overallRisk);
+      console.log(`  Coupling Risk:         ${riskColor(`${couplingRisk.overallRisk.toFixed(1)}/100`)} ${pc.dim(`[${riskLevel}]`)}`);
+      console.log(`  Avg Dependencies:      ${pc.cyan(couplingRisk.projectAverageCe.toFixed(1))} modules/file`);
+    }
+    console.log();
     
     this.printArchitectureViolations(grouped);
     this.printGodFileDetails(grouped);
@@ -479,5 +497,19 @@ export class TerminalReporter implements Reporter {
       case 'info': return 1;
       default: return 0;
     }
+  }
+
+  private getCouplingRiskLevel(risk: number): string {
+    if (risk >= 75) return 'EXTREME';
+    if (risk >= 50) return 'HIGH';
+    if (risk >= 25) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  private getCouplingRiskColor(risk: number): (text: string) => string {
+    if (risk >= 75) return pc.red;
+    if (risk >= 50) return pc.yellow;
+    if (risk >= 25) return pc.cyan;
+    return pc.green;
   }
 }

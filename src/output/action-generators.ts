@@ -2,9 +2,8 @@
  * Helper functions for generating action items from violations
  */
 
-import { Violation } from '../core/types.js';
+import { Violation, NextAction } from '@core/types.js';
 import { getFileName } from './formatters.js';
-import { NextAction } from './action-generator.js';
 
 export function generateCircularDependencyActions(violations: Violation[]): NextAction[] {
   return violations.map(v => {

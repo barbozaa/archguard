@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { TooManyImportsRule } from '../../src/rules/too-many-imports.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { TooManyImportsRule } from '@rules/too-many-imports.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('TooManyImportsRule', () => {
   let project: Project;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
-import { ForbiddenImportsRule } from '../../src/rules/forbidden-imports.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { ForbiddenImportsRule } from '@rules/forbidden-imports.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('ForbiddenImportsRule', () => {
   it('should detect forbidden imports', () => {

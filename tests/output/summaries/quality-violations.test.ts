@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as qualityViolations from '../../../src/output/summaries/quality-violations.js';
-import type { Violation } from '../../src/core/types.js';
+import * as qualityViolations from '@output/summaries/quality-violations.js';
+import type { Violation } from '@core/types.js';
 
 describe('Quality Violations Summaries', () => {
   beforeEach(() => {
@@ -63,7 +63,6 @@ describe('Quality Violations Summaries', () => {
     expect(() => qualityViolations.printSkippedTestsSummary([])).not.toThrow();
     expect(() => qualityViolations.printMissingTypeAnnotationsSummary([])).not.toThrow();
     expect(() => qualityViolations.printUnusedExportsSummary([])).not.toThrow();
-    expect(() => qualityViolations.printDeadCodeSummary([])).not.toThrow();
   });
 
   it('should print unused exports summary', () => {
@@ -81,66 +80,5 @@ describe('Quality Violations Summaries', () => {
     ];
     
     expect(() => qualityViolations.printUnusedExportsSummary(violations)).not.toThrow();
-  });
-
-  it('should print dead code summary with unreachable code', () => {
-    const violations: Violation[] = [
-      {
-        message: "Unreachable code in 'myFunction'",
-        file: 'src/dead.ts',
-        line: 10,
-        severity: 'warning',
-        rule: 'dead-code',
-        impact: 'Maintainability',
-        suggestedFix: 'Remove unreachable code',
-        penalty: 5
-      }
-    ];
-    
-    expect(() => qualityViolations.printDeadCodeSummary(violations)).not.toThrow();
-  });
-
-  it('should print dead code summary with unused variables', () => {
-    const violations: Violation[] = [
-      {
-        message: "Variable 'unusedVar' is declared but never used",
-        file: 'src/variables.ts',
-        line: 5,
-        severity: 'info',
-        rule: 'dead-code',
-        impact: 'Clutter',
-        suggestedFix: 'Remove unused variable',
-        penalty: 2
-      }
-    ];
-    
-    expect(() => qualityViolations.printDeadCodeSummary(violations)).not.toThrow();
-  });
-
-  it('should print dead code summary with mixed violations', () => {
-    const violations: Violation[] = [
-      {
-        message: "Unreachable code in 'func1'",
-        file: 'src/file1.ts',
-        line: 10,
-        severity: 'warning',
-        rule: 'dead-code',
-        impact: 'Maintainability',
-        suggestedFix: 'Remove',
-        penalty: 5
-      },
-      {
-        message: "Variable 'temp' is declared but never used",
-        file: 'src/file2.ts',
-        line: 3,
-        severity: 'info',
-        rule: 'dead-code',
-        impact: 'Clutter',
-        suggestedFix: 'Remove',
-        penalty: 2
-      }
-    ];
-    
-    expect(() => qualityViolations.printDeadCodeSummary(violations)).not.toThrow();
   });
 });

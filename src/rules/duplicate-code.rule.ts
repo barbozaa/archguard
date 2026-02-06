@@ -1,6 +1,6 @@
 import { Rule } from './rule-interface.js';
-import { Severity, Violation } from '../core/types.js';
-import { RuleContext } from '../core/rule-context.js';
+import { Severity, Violation } from '@core/types.js';
+import { RuleContext } from '@core/rule-context.js';
 import { processSourceFiles } from './utils/rule-helpers.js';
 import { createViolation } from './utils/violation-utils.js';
 

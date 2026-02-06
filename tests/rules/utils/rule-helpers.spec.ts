@@ -3,7 +3,7 @@ import {
   getThresholdFromConfig, 
   isTestFile, 
   shouldSkipNodeModules 
-} from '../../../src/rules/utils/rule-helpers.js';
+} from '@rules/utils/rule-helpers.js';
 
 describe('rule-helpers', () => {
   describe('getThresholdFromConfig', () => {

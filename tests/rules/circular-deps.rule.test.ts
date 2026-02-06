@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
-import { CircularDepsRule } from '../../src/rules/circular-deps.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { CircularDepsRule } from '@rules/circular-deps.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('CircularDepsRule', () => {
   it('should detect circular dependencies', () => {
@@ -20,7 +20,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project,
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map([
@@ -51,7 +51,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project,
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map([
@@ -70,7 +70,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project: new Project({ useInMemoryFileSystem: true }),
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map([
@@ -90,7 +90,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project: new Project({ useInMemoryFileSystem: true }),
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map(),
@@ -106,7 +106,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project: new Project({ useInMemoryFileSystem: true }),
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map([
@@ -125,7 +125,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project: new Project({ useInMemoryFileSystem: true }),
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map([
@@ -146,7 +146,7 @@ describe('CircularDepsRule', () => {
     const rule = new CircularDepsRule();
     const context: RuleContext = {
       project: new Project({ useInMemoryFileSystem: true }),
-      config: { srcDirectory: '/test', rules: { maxFileLines: 500, maxFileLines: 500  } },
+      config: { srcDirectory: '/test', rules: { maxFileLines: 500  } },
       rootPath: '/test',
       graph: {
         nodes: new Map([

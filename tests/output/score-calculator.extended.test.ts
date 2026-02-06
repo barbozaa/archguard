@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Project } from 'ts-morph';
-import { ScoreCalculator } from '../../src/output/score-calculator.js';
-import type { Violation } from '../../src/core/types.js';
+import { ScoreCalculator } from '@output/score-calculator.js';
+import type { Violation } from '@core/types.js';
 
 describe('ScoreCalculator', () => {
   const calculator = new ScoreCalculator();

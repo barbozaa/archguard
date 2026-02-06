@@ -1,4 +1,4 @@
-import { AnalysisResult } from '../core/types.js';
+import { AnalysisResult, NextAction } from '@core/types.js';
 import { groupViolationsByType } from './utils/violation-utils.js';
 import {
   generateCircularDependencyActions,
@@ -9,15 +9,6 @@ import {
   generateDeepNestingActions,
   generateBulkActions,
 } from './action-generators.js';
-
-export interface NextAction {
-  description: string;
-  priority: string;
-  effort: string;
-  impact?: string;
-  file?: string;
-  line?: number;
-}
 
 /**
  * Generates prioritized action items from analysis results

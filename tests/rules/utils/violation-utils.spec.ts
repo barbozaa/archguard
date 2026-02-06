@@ -3,7 +3,7 @@ import {
   calculateSeverityByCount,
   calculatePenaltyByThreshold,
   createViolation
-} from '../../../src/rules/utils/violation-utils.js';
+} from '@rules/utils/violation-utils.js';
 
 describe('Violation Utils', () => {
   describe('calculateSeverityByCount', () => {

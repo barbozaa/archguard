@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { MaxFileLinesRule } from '../../src/rules/max-file-lines.rule.js';
-import { RuleContext } from '../../src/core/rule-context.js';
-import { Config } from '../../src/config/config-schema.js';
-import { DependencyGraph } from '../../src/core/types.js';
+import { MaxFileLinesRule } from '@rules/max-file-lines.rule.js';
+import { RuleContext } from '@core/rule-context.js';
+import { Config } from '@config/config-schema.js';
+import { DependencyGraph } from '@core/types.js';
 
 describe('MaxFileLinesRule', () => {
   let rule: MaxFileLinesRule;
@@ -33,12 +33,6 @@ describe('MaxFileLinesRule', () => {
   });
 
   it('should not report violations for files within limit', () => {
-    const sourceFile = project.createSourceFile('/test/small.ts', `
-// This is a small file
-function hello() {
-  return 'world';
-}
-    `.trim());
 
     const context: RuleContext = {
       project,
@@ -52,9 +46,9 @@ function hello() {
   });
 
   it('should report violations for files exceeding limit', () => {
-    // Create a file with 600 lines (exceeds default 500, should be warning)
+    // Create file with 600 lines (limit is 100)
     const lines = Array(600).fill('const x = 1;').join('\n');
-    const sourceFile = project.createSourceFile('/test/large.ts', lines);
+    project.createSourceFile('/test/large.ts', lines);
 
     const context: RuleContext = {
       project,

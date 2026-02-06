@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { DuplicateCodeRule } from '../../src/rules/duplicate-code.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { DuplicateCodeRule } from '@rules/duplicate-code.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('DuplicateCodeRule', () => {
   let project: Project;

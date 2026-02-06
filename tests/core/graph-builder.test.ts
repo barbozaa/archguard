@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { GraphBuilder } from '../../src/core/graph-builder.js';
+import { GraphBuilder } from '@core/graph-builder.js';
 
 describe('GraphBuilder', () => {
   let project: Project;

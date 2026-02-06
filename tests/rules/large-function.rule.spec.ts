@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { LargeFunctionRule } from '../../src/rules/large-function.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { LargeFunctionRule } from '@rules/large-function.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('LargeFunctionRule', () => {
   let project: Project;

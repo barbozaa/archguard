@@ -1,4 +1,4 @@
-import { Violation, Severity, CategoryScore, ScoreBreakdown } from '../core/types.js';
+import { Violation, Severity, CategoryScore, ScoreBreakdown } from '@core/types.js';
 
 /**
  * Rule category for architectural classification
@@ -41,6 +41,15 @@ export class PenaltyCalculator {
   private static readonly MEDIUM_IMPACT_THRESHOLD = 20;
   private static readonly TOP_ISSUES_LIMIT = 5;
 
+  // Category weights for Architecture Health Score:
+  // Structural: 40%, Design: 30%, Complexity: 20%, Hygiene: 10%
+  private readonly categoryWeights: Record<RuleCategory, number> = {
+    structural: 0.40,
+    design: 0.30,
+    complexity: 0.20,
+    hygiene: 0.10,
+  };
+
   private readonly categoryMultipliers: Record<RuleCategory, number> = {
     structural: 1.2,
     design: 1.0,
@@ -75,7 +84,6 @@ export class PenaltyCalculator {
     // === CODE HEALTH (Hygiene) ===
     ['duplicate-code', { name: 'duplicate-code', weight: 6, category: 'hygiene' }],
     ['unused-exports', { name: 'unused-exports', weight: 2, category: 'hygiene' }],
-    ['dead-code', { name: 'dead-code', weight: 3, category: 'hygiene' }],
   ]);
 
   /**
@@ -96,14 +104,20 @@ export class PenaltyCalculator {
     const complexity = this.calculateCategoryPenalty(categorized.complexity, 'complexity');
     const hygiene = this.calculateCategoryPenalty(categorized.hygiene, 'hygiene');
 
-    const totalPenalty = 
-      structural.penalty + 
-      design.penalty + 
-      complexity.penalty + 
-      hygiene.penalty;
+    // Calculate Architecture Health Score (excluding Hygiene)
+    // Apply category weights: Structural 40%, Design 30%, Complexity 20%
+    const architecturePenalty = 
+      (structural.penalty * this.categoryWeights.structural) +
+      (design.penalty * this.categoryWeights.design) +
+      (complexity.penalty * this.categoryWeights.complexity);
 
-    // Apply project size normalization
-    const normalizedPenalty = this.normalizePenalty(totalPenalty, totalLOC);
+    // Hygiene is calculated separately (10% weight if included in total)
+    const totalPenalty = architecturePenalty + (hygiene.penalty * this.categoryWeights.hygiene);
+
+    // Apply project size normalization only to architecture penalty
+    const normalizedArchitecturePenalty = this.normalizePenalty(architecturePenalty, totalLOC);
+    const normalizedHygienePenalty = this.normalizePenalty(hygiene.penalty * this.categoryWeights.hygiene, totalLOC);
+    const normalizedPenalty = normalizedArchitecturePenalty + normalizedHygienePenalty;
 
     return {
       structural,
@@ -112,6 +126,8 @@ export class PenaltyCalculator {
       hygiene,
       totalPenalty,
       normalizedPenalty,
+      architecturePenalty: normalizedArchitecturePenalty, // Separate architecture score
+      hygienePenalty: normalizedHygienePenalty, // Separate hygiene score
     };
   }
 

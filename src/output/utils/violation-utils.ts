@@ -1,4 +1,4 @@
-import { Violation } from '../../core/types.js';
+import { Violation } from '@core/types.js';
 
 /**
  * Groups violations by their rule type

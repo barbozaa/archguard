@@ -5,8 +5,8 @@ import {
   printNumberedList,
   printSummaryStats,
   extractTotalFromMessages
-} from '../../../src/output/summaries/summary-helpers.js';
-import { Violation } from '../../../src/core/types.js';
+} from '@output/summaries/summary-helpers.js';
+import { Violation } from '@core/types.js';
 
 describe('Summary Helpers', () => {
   let consoleLogSpy: any;

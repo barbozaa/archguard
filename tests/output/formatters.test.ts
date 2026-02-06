@@ -9,7 +9,7 @@ import {
   formatPriority,
   getRiskColor,
   wrapText
-} from '../../src/output/formatters.js';
+} from '@output/formatters.js';
 
 describe('Formatters', () => {
   it('should get severity icon', () => {

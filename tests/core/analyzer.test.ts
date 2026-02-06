@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Analyzer } from '../../src/core/analyzer.js';
-import type { Config } from '../../src/config/config-schema.js';
-import type { Rule } from '../../src/rules/rule-interface.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { Analyzer } from '@core/analyzer.js';
+import type { Config } from '@config/config-schema.js';
 
 describe('Analyzer', () => {
   let consoleErrorSpy: any;
@@ -21,10 +19,6 @@ describe('Analyzer', () => {
   });
 
   it('should handle empty project analysis', async () => {
-    const config: Config = {
-      srcDirectory: '/test',
-      rules: { maxFileLines: 500, maxFileLines: 500  }
-    };
 
     const analyzer = new Analyzer();
     // Just verify we can create an analyzer, since analyze requires real files
@@ -37,19 +31,10 @@ describe('Analyzer', () => {
   });
 
   it('should handle rule errors gracefully', async () => {
-    const mockRule: Rule = {
-      name: 'failing-rule',
-      severity: 'critical',
-      penalty: 10,
-      check: (context: RuleContext) => {
-        throw new Error('Rule failed');
-      }
-    };
-
     const analyzer = new Analyzer();
     const config: Config = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500, maxFileLines: 500  }
+      rules: { maxFileLines: 500 }
     };
 
     try {
@@ -67,46 +52,10 @@ describe('Analyzer', () => {
   });
 
   it('should collect violations from multiple rules', async () => {
-    const mockRule1: Rule = {
-      name: 'rule-1',
-      severity: 'warning',
-      penalty: 5,
-      check: (context: RuleContext) => [
-        {
-          rule: 'rule-1',
-          message: 'Violation 1',
-          file: 'test.ts',
-          line: 1,
-          severity: 'warning',
-          impact: 'test',
-          suggestedFix: 'fix',
-          penalty: 5
-        }
-      ]
-    };
-
-    const mockRule2: Rule = {
-      name: 'rule-2',
-      severity: 'info',
-      penalty: 3,
-      check: (context: RuleContext) => [
-        {
-          rule: 'rule-2',
-          message: 'Violation 2',
-          file: 'test.ts',
-          line: 2,
-          severity: 'info',
-          impact: 'test',
-          suggestedFix: 'fix',
-          penalty: 3
-        }
-      ]
-    };
-
     const analyzer = new Analyzer();
     const config: Config = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500, maxFileLines: 500  }
+      rules: { maxFileLines: 500 }
     };
 
     try {
@@ -120,20 +69,10 @@ describe('Analyzer', () => {
   });
 
   it('should include error stack trace in rule errors', async () => {
-    const mockError = new Error('Detailed error');
-    const mockRule: Rule = {
-      name: 'error-rule',
-      severity: 'critical',
-      penalty: 10,
-      check: (context: RuleContext) => {
-        throw mockError;
-      }
-    };
-
     const analyzer = new Analyzer();
     const config: Config = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500, maxFileLines: 500  }
+      rules: { maxFileLines: 500 }
     };
 
     try {
@@ -150,19 +89,10 @@ describe('Analyzer', () => {
   });
 
   it('should handle non-Error objects thrown in rules', async () => {
-    const mockRule: Rule = {
-      name: 'string-error-rule',
-      severity: 'critical',
-      penalty: 10,
-      check: (context: RuleContext) => {
-        throw 'String error';
-      }
-    };
-
     const analyzer = new Analyzer();
     const config: Config = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500, maxFileLines: 500  }
+      rules: { maxFileLines: 500 }
     };
 
     try {
@@ -182,7 +112,7 @@ describe('Analyzer', () => {
     const analyzer = new Analyzer();
     const config: Config = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500, maxFileLines: 500  }
+      rules: { maxFileLines: 500  }
     };
 
     try {

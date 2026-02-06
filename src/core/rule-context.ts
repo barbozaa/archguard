@@ -1,6 +1,6 @@
 import { Project } from 'ts-morph';
-import { DependencyGraph } from './types.js';
-import { Config } from '../config/config-schema.js';
+import { DependencyGraph } from '@core/types.js';
+import { Config } from '@config/config-schema.js';
 
 /**
  * Shared context for all rules to eliminate parameter duplication (Data Clumps)

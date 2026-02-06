@@ -1,13 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { ConfigSchema, defaultConfig } from '../../src/config/config-schema.js';
-import type { Config } from '../../src/config/config-schema.js';
+import { ConfigSchema, defaultConfig } from '@config/config-schema.js';
 
 describe('ConfigSchema', () => {
   it('should validate valid config', () => {
     const validConfig = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500,
-        maxFileLines: 500
+      rules: { maxFileLines: 500
        }
     };
     
@@ -18,8 +16,7 @@ describe('ConfigSchema', () => {
   it('should accept config with custom rules', () => {
     const config = {
       srcDirectory: './src',
-      rules: { maxFileLines: 500,
-        maxFileLines: 300
+      rules: { maxFileLines: 500
        }
     };
     
@@ -31,8 +28,7 @@ describe('ConfigSchema', () => {
     const config = {
       srcDirectory: './src',
       tsConfigPath: './tsconfig.json',
-      rules: { maxFileLines: 500,
-        maxFileLines: 500
+      rules: { maxFileLines: 500
        }
     };
     

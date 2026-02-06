@@ -1,8 +1,8 @@
 import { SyntaxKind, ArrowFunction } from 'ts-morph';
-import type { Rule } from '../rule-interface.js';
-import type { RuleContext } from '../../core/rule-context.js';
-import type { Violation, Severity } from '../../core/types.js';
-import { shouldSkipNodeModules, getRelativePath } from '../utils/violation-utils.js';
+import type { Rule } from '@rules/rule-interface.js';
+import type { RuleContext } from '@core/rule-context.js';
+import type { Violation, Severity } from '@core/types.js';
+import { shouldSkipNodeModules, getRelativePath } from '@rules/utils/violation-utils.js';
 
 /**
  * Context object for function checking operations
@@ -158,10 +158,22 @@ export abstract class FunctionAnalysisRule implements Rule {
     suggestedFix: string;
     penalty: number;
   }): Violation {
+    // Format metric value with appropriate units for regex parsing
+    let metricText: string;
+    if (params.metric.includes('depth')) {
+      metricText = `${params.metric} of ${params.metricValue} levels`;
+    } else if (params.metric === 'lines') {
+      metricText = `${params.metricValue} lines`;
+    } else if (params.metric.includes('complexity')) {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    } else {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    }
+    
     return {
       rule: params.rule,
       severity: params.severity,
-      message: `Function '${params.functionName}' has ${params.metric} of ${params.metricValue} (max: ${params.threshold})`,
+      message: `Function '${params.functionName}' has ${metricText} (max: ${params.threshold})`,
       file: getRelativePath(params.filePath, params.rootPath),
       line: params.line,
       impact: params.impact,
@@ -188,10 +200,22 @@ export abstract class FunctionAnalysisRule implements Rule {
     suggestedFix: string;
     penalty: number;
   }): Violation {
+    // Format metric value with appropriate units for regex parsing
+    let metricText: string;
+    if (params.metric.includes('depth')) {
+      metricText = `${params.metric} of ${params.metricValue} levels`;
+    } else if (params.metric === 'lines') {
+      metricText = `${params.metricValue} lines`;
+    } else if (params.metric.includes('complexity')) {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    } else {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    }
+    
     return {
       rule: params.rule,
       severity: params.severity,
-      message: `Method '${params.className}.${params.methodName}' has ${params.metric} of ${params.metricValue} (max: ${params.threshold})`,
+      message: `Method '${params.className}.${params.methodName}' has ${metricText} (max: ${params.threshold})`,
       file: getRelativePath(params.filePath, params.rootPath),
       line: params.line,
       impact: params.impact,
@@ -217,10 +241,22 @@ export abstract class FunctionAnalysisRule implements Rule {
     suggestedFix: string;
     penalty: number;
   }): Violation {
+    // Format metric value with appropriate units for regex parsing
+    let metricText: string;
+    if (params.metric.includes('depth')) {
+      metricText = `${params.metric} of ${params.metricValue} levels`;
+    } else if (params.metric === 'lines') {
+      metricText = `${params.metricValue} lines`;
+    } else if (params.metric.includes('complexity')) {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    } else {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    }
+    
     return {
       rule: params.rule,
       severity: params.severity,
-      message: `Arrow function '${params.functionName}' has ${params.metric} of ${params.metricValue} (max: ${params.threshold})`,
+      message: `Arrow function '${params.functionName}' has ${metricText} (max: ${params.threshold})`,
       file: getRelativePath(params.filePath, params.rootPath),
       line: params.line,
       impact: params.impact,

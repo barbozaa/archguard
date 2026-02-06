@@ -31,4 +31,3 @@ export { ShotgunSurgeryRule } from './shotgun-surgery.rule.js';
 // === CODE HEALTH ===
 export { DuplicateCodeRule } from './duplicate-code.rule.js';
 export { UnusedExportsRule } from './unused-exports.rule.js';
-export { DeadCodeRule } from './dead-code.rule.js';

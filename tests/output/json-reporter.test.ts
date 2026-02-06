@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { JsonReporter } from '../../src/output/json-reporter.js';
-import type { AnalysisResult } from '../../src/core/types.js';
+import { JsonReporter } from '@output/json-reporter.js';
+import type { AnalysisResult } from '@core/types.js';
 
 describe('JSONReporter', () => {
   beforeEach(() => {
@@ -17,6 +17,8 @@ describe('JSONReporter', () => {
     const result: AnalysisResult = {
       violations: [],
       score: 100,
+      architectureScore: 100,
+      hygieneScore: 100,
       totalModules: 10,
       healthyModuleCount: 10,
       status: 'Excellent',
@@ -47,6 +49,8 @@ describe('JSONReporter', () => {
         }
       ],
       score: 80,
+      architectureScore: 85,
+      hygieneScore: 75,
       totalModules: 10,
       healthyModuleCount: 9,
       status: 'Healthy',
@@ -66,6 +70,8 @@ describe('JSONReporter', () => {
     const result: AnalysisResult = {
       violations: [],
       score: 100,
+      architectureScore: 100,
+      hygieneScore: 100,
       totalModules: 5,
       healthyModuleCount: 5,
       status: 'Excellent',

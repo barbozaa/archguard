@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Project } from 'ts-morph';
-import { UnusedExportsRule } from '../../src/rules/unused-exports.rule.js';
-import type { RuleContext } from '../../src/core/types.js';
+import { UnusedExportsRule } from '@rules/unused-exports.rule.js';
+import type { RuleContext } from '@core/types.js';
 
 describe('UnusedExportsRule', () => {
   let project: Project;

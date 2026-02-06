@@ -1,5 +1,5 @@
 import { SourceFile } from 'ts-morph';
-import { Violation } from '../../core/types.js';
+import { Violation } from '@core/types.js';
 
 /**
  * Shared type definitions for rules to reduce duplication

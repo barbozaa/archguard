@@ -2,12 +2,12 @@
 
 import cac from 'cac';
 import pc from 'picocolors';
-import { ConfigLoader } from '../config/config-loader.js';
-import { Analyzer } from '../core/analyzer.js';
-import { TerminalReporter } from '../output/terminal-reporter.js';
-import { JsonReporter } from '../output/json-reporter.js';
-import { ExecutiveReporter } from '../output/executive-reporter.js';
-import { Reporter } from '../output/reporter-interface.js';
+import { ConfigLoader } from '@config/config-loader.js';
+import { Analyzer } from '@core/analyzer.js';
+import { TerminalReporter } from '@output/terminal-reporter.js';
+import { JsonReporter } from '@output/json-reporter.js';
+import { ExecutiveReporter } from '@output/executive-reporter.js';
+import { Reporter } from '@output/reporter-interface.js';
 
 const cli = cac('archguard');
 

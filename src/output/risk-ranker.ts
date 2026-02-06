@@ -1,4 +1,4 @@
-import { Violation } from '../core/types.js';
+import { Violation } from '@core/types.js';
 
 /**
  * Ranks violations by severity and impact

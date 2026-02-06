@@ -1,6 +1,6 @@
 import { FunctionDeclaration, MethodDeclaration, ConstructorDeclaration, ArrowFunction, VariableDeclaration } from 'ts-morph';
-import { Violation, Severity } from '../core/types.js';
-import { RuleContext } from '../core/rule-context.js';
+import { Violation, Severity } from '@core/types.js';
+import { RuleContext } from '@core/rule-context.js';
 import { getThresholdFromConfig } from './utils/rule-helpers.js';
 import { shouldSkipNodeModules } from './utils/violation-utils.js';
 import { ViolationData } from './utils/shared-types.js';

@@ -10,20 +10,11 @@ import { resolve } from "path";
 
 // src/config/config-schema.ts
 import { z } from "zod";
-var LayerRulesSchema = z.record(z.array(z.string())).optional();
-var ForbiddenImportSchema = z.object({
-  pattern: z.string(),
-  from: z.string()
-});
 var ConfigSchema = z.object({
   entryPoint: z.string().optional(),
   srcDirectory: z.string().default("./src"),
   tsConfigPath: z.string().optional(),
-  rules: z.object({
-    maxFileLines: z.number().default(500),
-    layerRules: LayerRulesSchema,
-    forbiddenImports: z.array(ForbiddenImportSchema).optional()
-  }).optional(),
+  rules: z.record(z.any()).optional(),
   ignore: z.array(z.string()).optional()
 });
 var defaultConfig = {
@@ -278,7 +269,7 @@ var ProjectLoader = class {
 };
 
 // src/core/graph-builder.ts
-import { relative as relative2, dirname, resolve as resolve3 } from "path";
+import { relative as relative2 } from "path";
 var GraphBuilder = class {
   build(project, rootPath) {
     const nodes = /* @__PURE__ */ new Map();
@@ -320,34 +311,16 @@ var GraphBuilder = class {
       if (!moduleSpecifier.startsWith(".") && !moduleSpecifier.startsWith("/")) {
         continue;
       }
-      const sourceFilePath = sourceFile.getFilePath();
-      const sourceFileDir = dirname(sourceFilePath);
-      try {
-        const resolvedPath = this.resolveImport(
-          moduleSpecifier,
-          sourceFileDir,
-          rootPath
-        );
-        if (resolvedPath) {
+      const importedFile = importDecl.getModuleSpecifierSourceFile();
+      if (importedFile) {
+        const importedPath = importedFile.getFilePath();
+        if (!importedPath.includes("node_modules")) {
+          const resolvedPath = relative2(rootPath, importedPath);
           dependencies.add(resolvedPath);
         }
-      } catch {
       }
     }
     return dependencies;
-  }
-  resolveImport(moduleSpecifier, fromDir, rootPath) {
-    let resolved = resolve3(fromDir, moduleSpecifier);
-    const extensions = [".ts", ".tsx", ".js", "/index.ts", "/index.tsx"];
-    for (const ext of extensions) {
-      try {
-        const candidate = resolved + ext;
-        return relative2(rootPath, candidate);
-      } catch {
-        continue;
-      }
-    }
-    return relative2(rootPath, resolved);
   }
   detectCycles(nodes) {
     const cycles = [];
@@ -385,6 +358,194 @@ var GraphBuilder = class {
   }
 };
 
+// src/core/coupling-risk-analyzer.ts
+var CouplingRiskAnalyzer = class _CouplingRiskAnalyzer {
+  // === SEMANTIC CONSTANTS ===
+  static HIGH_CA_THRESHOLD_PERCENTILE = 0.9;
+  // Top 10% Ca modules
+  static HIGH_CE_THRESHOLD_PERCENTILE = 0.9;
+  // Top 10% Ce modules
+  static INSTABILITY_HIGH_THRESHOLD = 0.75;
+  // I > 0.75 = unstable
+  static CYCLE_RISK_MULTIPLIER = 2.5;
+  // Non-linear penalty
+  static LAYER_VIOLATION_WEIGHT = 3;
+  // Architectural debt weight
+  static HUB_AMPLIFICATION_FACTOR = 1.5;
+  // Hubs amplify risk
+  static FRAGILITY_PENALTY_WEIGHT = 2;
+  // High Ce = fragile to changes
+  static RISK_NORMALIZATION_FACTOR = 10;
+  // Scale to [0, 100]
+  /**
+   * Analyze coupling risk across the entire project
+   * 
+   * @param graph Dependency graph from GraphBuilder
+   * @param violations Violations from rules (to extract cycles and layer violations)
+   * @returns Complete coupling risk analysis
+   */
+  analyze(graph, violations) {
+    const modules = Array.from(graph.nodes.keys());
+    if (modules.length === 0) {
+      return this.emptyAnalysis();
+    }
+    const metricsMap = /* @__PURE__ */ new Map();
+    for (const modulePath of modules) {
+      const ca = this.calculateAfferentCoupling(modulePath, graph);
+      const ce = this.calculateEfferentCoupling(modulePath, graph);
+      const instability = this.calculateInstability(ca, ce);
+      const cycleCount = this.getCycleParticipation(modulePath, violations);
+      const layerViolations = this.getLayerViolationCount(modulePath, violations);
+      metricsMap.set(modulePath, {
+        modulePath,
+        ca,
+        ce,
+        instability,
+        cycleCount,
+        layerViolations,
+        riskScore: 0
+        // Calculated in Step 3
+      });
+    }
+    const allMetrics = Array.from(metricsMap.values());
+    const avgCa = this.average(allMetrics.map((m) => m.ca));
+    const avgCe = this.average(allMetrics.map((m) => m.ce));
+    const avgInstability = this.average(allMetrics.map((m) => m.instability));
+    const caThreshold = this.percentile(allMetrics.map((m) => m.ca), _CouplingRiskAnalyzer.HIGH_CA_THRESHOLD_PERCENTILE);
+    const ceThreshold = this.percentile(allMetrics.map((m) => m.ce), _CouplingRiskAnalyzer.HIGH_CE_THRESHOLD_PERCENTILE);
+    const metricsWithRisk = allMetrics.map((m) => ({
+      ...m,
+      riskScore: this.calculateRiskScore(m, caThreshold, ceThreshold)
+    }));
+    const highRiskModules = metricsWithRisk.filter((m) => m.riskScore >= 50).sort((a, b) => b.riskScore - a.riskScore).slice(0, 10);
+    const hubModules = metricsWithRisk.filter((m) => m.ca >= caThreshold && m.ca > 0).sort((a, b) => b.ca - a.ca).slice(0, 5);
+    const unstableModules = metricsWithRisk.filter((m) => m.instability >= _CouplingRiskAnalyzer.INSTABILITY_HIGH_THRESHOLD && m.ca > 0).sort((a, b) => b.instability - a.instability).slice(0, 5);
+    const overallRisk = this.calculateOverallRisk(metricsWithRisk);
+    return {
+      projectAverageCa: avgCa,
+      projectAverageCe: avgCe,
+      projectAverageInstability: avgInstability,
+      totalModules: modules.length,
+      highRiskModules,
+      hubModules,
+      unstableModules,
+      overallRisk
+    };
+  }
+  /**
+   * Calculate afferent coupling (Ca) - number of modules depending on this module
+   */
+  calculateAfferentCoupling(modulePath, graph) {
+    const node = graph.nodes.get(modulePath);
+    return node?.dependents?.size ?? 0;
+  }
+  /**
+   * Calculate efferent coupling (Ce) - number of modules this module depends on
+   */
+  calculateEfferentCoupling(modulePath, graph) {
+    const node = graph.nodes.get(modulePath);
+    return node?.dependencies?.size ?? 0;
+  }
+  /**
+   * Calculate instability metric: I = Ce / (Ca + Ce)
+   * I = 0: Maximally stable (only depended upon)
+   * I = 1: Maximally unstable (only depends on others)
+   */
+  calculateInstability(ca, ce) {
+    const total = ca + ce;
+    if (total === 0) return 0;
+    return ce / total;
+  }
+  /**
+   * Count how many circular dependency violations involve this module
+   */
+  getCycleParticipation(modulePath, violations) {
+    return violations.filter(
+      (v) => v.rule === "circular-deps" && (v.file === modulePath || v.message.includes(modulePath))
+    ).length;
+  }
+  /**
+   * Count how many layer violations involve this module
+   */
+  getLayerViolationCount(modulePath, violations) {
+    return violations.filter(
+      (v) => v.rule === "layer-violation" && v.file === modulePath
+    ).length;
+  }
+  /**
+   * Calculate composite risk score for a module
+   * 
+   * Risk Model:
+   * - Base risk from Ca (primary driver)
+   * - Fragility penalty (high Ce)
+   * - Instability penalty (only if Ca is high)
+   * - Cycle multiplier (exponential)
+   * - Layer violation weight
+   * - Hub amplification
+   */
+  calculateRiskScore(metrics, caThreshold, ceThreshold) {
+    let risk = metrics.ca * 5;
+    if (metrics.ce >= ceThreshold) {
+      risk += metrics.ce * _CouplingRiskAnalyzer.FRAGILITY_PENALTY_WEIGHT;
+    }
+    if (metrics.ca >= caThreshold) {
+      risk += metrics.instability * 20;
+    }
+    if (metrics.cycleCount > 0) {
+      risk *= 1 + metrics.cycleCount * _CouplingRiskAnalyzer.CYCLE_RISK_MULTIPLIER;
+    }
+    risk += metrics.layerViolations * _CouplingRiskAnalyzer.LAYER_VIOLATION_WEIGHT * 5;
+    if (metrics.ca >= caThreshold) {
+      risk *= _CouplingRiskAnalyzer.HUB_AMPLIFICATION_FACTOR;
+    }
+    return Math.min(100, risk / _CouplingRiskAnalyzer.RISK_NORMALIZATION_FACTOR);
+  }
+  /**
+   * Calculate overall project coupling risk
+   * Weighted average with emphasis on high-risk modules
+   */
+  calculateOverallRisk(metrics) {
+    if (metrics.length === 0) return 0;
+    const weightedSum = metrics.reduce((sum, m) => {
+      const weight = m.ca > 0 ? m.ca : 1;
+      return sum + m.riskScore * weight;
+    }, 0);
+    const totalWeight = metrics.reduce((sum, m) => sum + (m.ca > 0 ? m.ca : 1), 0);
+    return Math.min(100, weightedSum / totalWeight);
+  }
+  /**
+   * Calculate average of numbers
+   */
+  average(values) {
+    if (values.length === 0) return 0;
+    return values.reduce((sum, v) => sum + v, 0) / values.length;
+  }
+  /**
+   * Calculate percentile value from sorted values
+   */
+  percentile(values, percentile) {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const index = Math.ceil(sorted.length * percentile) - 1;
+    return sorted[Math.max(0, index)];
+  }
+  /**
+   * Return empty analysis for edge cases
+   */
+  emptyAnalysis() {
+    return {
+      projectAverageCa: 0,
+      projectAverageCe: 0,
+      projectAverageInstability: 0,
+      totalModules: 0,
+      highRiskModules: [],
+      hubModules: [],
+      unstableModules: [],
+      overallRisk: 0
+    };
+  }
+};
+
 // src/output/penalty-calculator.ts
 var PenaltyCalculator = class _PenaltyCalculator {
   // Normalization configuration
@@ -400,6 +561,14 @@ var PenaltyCalculator = class _PenaltyCalculator {
   static HIGH_IMPACT_THRESHOLD = 50;
   static MEDIUM_IMPACT_THRESHOLD = 20;
   static TOP_ISSUES_LIMIT = 5;
+  // Category weights for Architecture Health Score:
+  // Structural: 40%, Design: 30%, Complexity: 20%, Hygiene: 10%
+  categoryWeights = {
+    structural: 0.4,
+    design: 0.3,
+    complexity: 0.2,
+    hygiene: 0.1
+  };
   categoryMultipliers = {
     structural: 1.2,
     design: 1,
@@ -428,8 +597,7 @@ var PenaltyCalculator = class _PenaltyCalculator {
     ["max-file-lines", { name: "max-file-lines", weight: 3, category: "complexity" }],
     // === CODE HEALTH (Hygiene) ===
     ["duplicate-code", { name: "duplicate-code", weight: 6, category: "hygiene" }],
-    ["unused-exports", { name: "unused-exports", weight: 2, category: "hygiene" }],
-    ["dead-code", { name: "dead-code", weight: 3, category: "hygiene" }]
+    ["unused-exports", { name: "unused-exports", weight: 2, category: "hygiene" }]
   ]);
   /**
    * Calculate total penalty with category-specific weights and normalization
@@ -446,15 +614,22 @@ var PenaltyCalculator = class _PenaltyCalculator {
     const design = this.calculateCategoryPenalty(categorized.design, "design");
     const complexity = this.calculateCategoryPenalty(categorized.complexity, "complexity");
     const hygiene = this.calculateCategoryPenalty(categorized.hygiene, "hygiene");
-    const totalPenalty = structural.penalty + design.penalty + complexity.penalty + hygiene.penalty;
-    const normalizedPenalty = this.normalizePenalty(totalPenalty, totalLOC);
+    const architecturePenalty = structural.penalty * this.categoryWeights.structural + design.penalty * this.categoryWeights.design + complexity.penalty * this.categoryWeights.complexity;
+    const totalPenalty = architecturePenalty + hygiene.penalty * this.categoryWeights.hygiene;
+    const normalizedArchitecturePenalty = this.normalizePenalty(architecturePenalty, totalLOC);
+    const normalizedHygienePenalty = this.normalizePenalty(hygiene.penalty * this.categoryWeights.hygiene, totalLOC);
+    const normalizedPenalty = normalizedArchitecturePenalty + normalizedHygienePenalty;
     return {
       structural,
       design,
       complexity,
       hygiene,
       totalPenalty,
-      normalizedPenalty
+      normalizedPenalty,
+      architecturePenalty: normalizedArchitecturePenalty,
+      // Separate architecture score
+      hygienePenalty: normalizedHygienePenalty
+      // Separate hygiene score
     };
   }
   /**
@@ -557,13 +732,19 @@ var ScoreCalculator = class _ScoreCalculator {
   calculate(violations, totalModules, totalLOC) {
     if (totalLOC && totalLOC > 0) {
       const breakdown = this.penaltyCalculator.calculatePenalty(violations, totalLOC);
-      const rawScore = _ScoreCalculator.STARTING_SCORE - breakdown.normalizedPenalty;
-      const score = Math.max(
+      const rawArchitectureScore = _ScoreCalculator.STARTING_SCORE - breakdown.architecturePenalty;
+      const architectureScore = Math.max(
         _ScoreCalculator.MIN_SCORE,
-        Math.min(_ScoreCalculator.MAX_SCORE, Math.round(rawScore))
+        Math.min(_ScoreCalculator.MAX_SCORE, Math.round(rawArchitectureScore))
       );
-      const status = this.getStatus(score);
-      return { score, status, breakdown };
+      const rawHygieneScore = _ScoreCalculator.STARTING_SCORE - breakdown.hygienePenalty;
+      const hygieneScore = Math.max(
+        _ScoreCalculator.MIN_SCORE,
+        Math.min(_ScoreCalculator.MAX_SCORE, Math.round(rawHygieneScore))
+      );
+      const score = Math.round(architectureScore * 0.9 + hygieneScore * 0.1);
+      const status = this.getStatus(architectureScore);
+      return { score, architectureScore, hygieneScore, status, breakdown };
     }
     return this.calculateLegacy(violations, totalModules);
   }
@@ -575,8 +756,10 @@ var ScoreCalculator = class _ScoreCalculator {
     const scalingFactor = this.calculateScalingFactor(totalModules, violations.length);
     const adjustedPenalty = totalPenalty / scalingFactor;
     const score = Math.max(_ScoreCalculator.MIN_SCORE, Math.round(_ScoreCalculator.STARTING_SCORE - adjustedPenalty));
+    const architectureScore = score;
+    const hygieneScore = score;
     const status = this.getStatus(score);
-    return { score, status };
+    return { score, architectureScore, hygieneScore, status };
   }
   calculateScalingFactor(totalModules, violationCount) {
     let baseScaling = 1;
@@ -918,10 +1101,20 @@ var FunctionAnalysisRule = class {
    * Helper method to create a function violation with standardized structure
    */
   createFunctionViolation(params) {
+    let metricText;
+    if (params.metric.includes("depth")) {
+      metricText = `${params.metric} of ${params.metricValue} levels`;
+    } else if (params.metric === "lines") {
+      metricText = `${params.metricValue} lines`;
+    } else if (params.metric.includes("complexity")) {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    } else {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    }
     return {
       rule: params.rule,
       severity: params.severity,
-      message: `Function '${params.functionName}' has ${params.metric} of ${params.metricValue} (max: ${params.threshold})`,
+      message: `Function '${params.functionName}' has ${metricText} (max: ${params.threshold})`,
       file: getRelativePath(params.filePath, params.rootPath),
       line: params.line,
       impact: params.impact,
@@ -933,10 +1126,20 @@ var FunctionAnalysisRule = class {
    * Helper method to create a method violation with standardized structure
    */
   createMethodViolation(params) {
+    let metricText;
+    if (params.metric.includes("depth")) {
+      metricText = `${params.metric} of ${params.metricValue} levels`;
+    } else if (params.metric === "lines") {
+      metricText = `${params.metricValue} lines`;
+    } else if (params.metric.includes("complexity")) {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    } else {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    }
     return {
       rule: params.rule,
       severity: params.severity,
-      message: `Method '${params.className}.${params.methodName}' has ${params.metric} of ${params.metricValue} (max: ${params.threshold})`,
+      message: `Method '${params.className}.${params.methodName}' has ${metricText} (max: ${params.threshold})`,
       file: getRelativePath(params.filePath, params.rootPath),
       line: params.line,
       impact: params.impact,
@@ -948,10 +1151,20 @@ var FunctionAnalysisRule = class {
    * Helper method to create an arrow function violation with standardized structure
    */
   createArrowFunctionViolation(params) {
+    let metricText;
+    if (params.metric.includes("depth")) {
+      metricText = `${params.metric} of ${params.metricValue} levels`;
+    } else if (params.metric === "lines") {
+      metricText = `${params.metricValue} lines`;
+    } else if (params.metric.includes("complexity")) {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    } else {
+      metricText = `${params.metric} of ${params.metricValue}`;
+    }
     return {
       rule: params.rule,
       severity: params.severity,
-      message: `Arrow function '${params.functionName}' has ${params.metric} of ${params.metricValue} (max: ${params.threshold})`,
+      message: `Arrow function '${params.functionName}' has ${metricText} (max: ${params.threshold})`,
       file: getRelativePath(params.filePath, params.rootPath),
       line: params.line,
       impact: params.impact,
@@ -1688,6 +1901,24 @@ var ShotgunSurgeryRule = class {
     this.trackImports(sourceFiles, context.rootPath, symbolUsages);
     return this.generateViolations(symbolUsages, threshold);
   }
+  /**
+   * Check if a module is a utility/helper/shared module
+   * These are meant to be used across many files
+   */
+  isUtilityModule(modulePath) {
+    const utilityPatterns = [
+      "/utils/",
+      "/helpers/",
+      "/shared/",
+      "/lib/",
+      "/common/",
+      "utils.ts",
+      "helpers.ts",
+      "shared.ts",
+      "constants.ts"
+    ];
+    return utilityPatterns.some((pattern) => modulePath.includes(pattern));
+  }
   collectExportedSymbols(sourceFiles, rootPath) {
     const symbolUsages = /* @__PURE__ */ new Map();
     processSourceFiles(
@@ -1727,9 +1958,10 @@ var ShotgunSurgeryRule = class {
           const importedFile = importDecl.getModuleSpecifierSourceFile();
           if (!importedFile) continue;
           const importedPath = relative4(rootPath, importedFile.getFilePath());
+          this.trackNamespaceImport(importDecl, importedPath, relativePath, symbolUsages);
+          if (this.isUtilityModule(importedPath)) continue;
           this.trackNamedImports(importDecl, importedPath, relativePath, symbolUsages);
           this.trackDefaultImport(importDecl, importedPath, relativePath, symbolUsages);
-          this.trackNamespaceImport(importDecl, importedPath, relativePath, symbolUsages);
         }
       }
     );
@@ -2050,100 +2282,6 @@ var UnusedExportsRule = class {
   }
 };
 
-// src/rules/dead-code.rule.ts
-import { Node as Node4, SyntaxKind as SyntaxKind4 } from "ts-morph";
-var DeadCodeRule = class {
-  name = "dead-code";
-  severity = "info";
-  penalty = 4;
-  check(context) {
-    const { project, rootPath } = context;
-    const violations = [];
-    processSourceFiles(
-      project.getSourceFiles(),
-      rootPath,
-      (sourceFile, filePath, _) => {
-        this.checkUnreachableAfterReturn(sourceFile, filePath, violations);
-        this.checkUnusedVariables(sourceFile, filePath, violations);
-      }
-    );
-    return violations;
-  }
-  checkUnreachableAfterReturn(sourceFile, filePath, violations) {
-    const functions = [
-      ...sourceFile.getFunctions(),
-      ...sourceFile.getClasses().flatMap((cls) => cls.getMethods())
-    ];
-    for (const func of functions) {
-      const body = func.getBody();
-      if (!body || !Node4.isBlock(body)) continue;
-      const statements = body.getStatements();
-      for (let i = 0; i < statements.length - 1; i++) {
-        const statement = statements[i];
-        if (this.isExitStatement(statement)) {
-          const nextStatement = statements[i + 1];
-          const functionName = "getName" in func ? func.getName() : "<anonymous>";
-          violations.push(createViolation({
-            rule: "Dead Code",
-            severity: "info",
-            message: `Unreachable code after ${statement.getKindName().toLowerCase()} in '${functionName}'`,
-            file: filePath,
-            line: nextStatement.getStartLineNumber(),
-            impact: "Dead code increases maintenance burden and confuses developers",
-            suggestedFix: "Remove unreachable code or restructure logic to make it reachable",
-            penalty: 4
-          }));
-          break;
-        }
-      }
-    }
-  }
-  checkUnusedVariables(sourceFile, filePath, violations) {
-    const variableStatements = sourceFile.getVariableStatements();
-    for (const stmt of variableStatements) {
-      if (stmt.isExported()) continue;
-      const declarations = stmt.getDeclarations();
-      this.checkDeclarationsForUnusedVariables(declarations, filePath, sourceFile, violations);
-    }
-  }
-  checkDeclarationsForUnusedVariables(declarations, filePath, sourceFile, violations) {
-    for (const decl of declarations) {
-      const name = decl.getName();
-      if (this.shouldSkipVariable(name)) continue;
-      const references = decl.findReferencesAsNodes();
-      if (references.length !== 1) continue;
-      const fileText = sourceFile.getFullText();
-      if (this.isVariableUsed(name, fileText)) continue;
-      violations.push(createViolation({
-        rule: "Dead Code",
-        severity: "info",
-        message: `Variable '${name}' is declared but never used`,
-        file: filePath,
-        line: decl.getStartLineNumber(),
-        impact: "Unused variables add clutter and may indicate incomplete refactoring",
-        suggestedFix: `Remove unused variable '${name}' or use it in the code`,
-        penalty: 2
-      }));
-    }
-  }
-  shouldSkipVariable(name) {
-    return name.includes("{") || name.includes("[");
-  }
-  isVariableUsed(name, fileText) {
-    const usagePattern = new RegExp(`\\b${name}\\b`, "g");
-    const matches = fileText.match(usagePattern);
-    if (matches && matches.length > 1) return true;
-    const variableUsagePattern = new RegExp(`\\[\\s*${name}\\s*\\]|\\[\\s*['"\`]${name}['"\`]\\s*\\]|${name}\\s*\\[`, "g");
-    if (variableUsagePattern.test(fileText)) return true;
-    const contextPattern = new RegExp(`[:{,]\\s*${name}\\b|\\(${name}\\)|<${name}>`, "g");
-    return contextPattern.test(fileText);
-  }
-  isExitStatement(statement) {
-    const kind = statement.getKind();
-    return kind === SyntaxKind4.ReturnStatement || kind === SyntaxKind4.ThrowStatement;
-  }
-};
-
 // src/core/analyzer.ts
 var Analyzer = class {
   rules = [
@@ -2163,13 +2301,13 @@ var Analyzer = class {
     new ShotgunSurgeryRule(),
     // === CODE HEALTH ===
     new DuplicateCodeRule(),
-    new UnusedExportsRule(),
-    new DeadCodeRule()
+    new UnusedExportsRule()
   ];
   projectLoader = new ProjectLoader();
   graphBuilder = new GraphBuilder();
   scoreCalculator = new ScoreCalculator();
   riskRanker = new RiskRanker();
+  couplingRiskAnalyzer = new CouplingRiskAnalyzer();
   async analyze(config) {
     const projectContext = await this.projectLoader.load(config);
     const project = this.projectLoader.getProject();
@@ -2181,7 +2319,7 @@ var Analyzer = class {
       return sum + sf.getEndLineNumber();
     }, 0);
     const counts = this.riskRanker.countBySeverity(violations);
-    const { score, status, breakdown } = this.scoreCalculator.calculate(
+    const { score, architectureScore, hygieneScore, status, breakdown } = this.scoreCalculator.calculate(
       violations,
       actualModuleCount,
       totalLOC
@@ -2190,9 +2328,15 @@ var Analyzer = class {
     const violatedFiles = new Set(violations.map((v) => v.file));
     const healthyModuleCount = Math.max(0, actualModuleCount - violatedFiles.size);
     const projectName = this.getProjectName(projectContext.rootPath);
+    const couplingRisk = this.couplingRiskAnalyzer.analyze(graph, violations);
+    const blastRadius = this.calculateBlastRadius(graph);
+    const modulesAnalyzedPercent = 100;
+    const confidenceLevel = this.calculateConfidenceLevel(actualModuleCount, errors.length > 0);
     const result = {
       violations,
       score,
+      architectureScore,
+      hygieneScore,
       status,
       criticalCount: counts.critical,
       warningCount: counts.warning,
@@ -2203,7 +2347,11 @@ var Analyzer = class {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       projectName,
       scoreBreakdown: breakdown,
-      totalLOC
+      totalLOC,
+      couplingRisk,
+      blastRadius,
+      confidenceLevel,
+      modulesAnalyzedPercent
     };
     if (errors.length > 0) {
       result.ruleErrors = errors;
@@ -2255,6 +2403,32 @@ var Analyzer = class {
       console.error(error.stack);
     }
     console.error("");
+  }
+  /**
+   * Calculate Blast Radius: Top 5 modules with highest Ca (most dependents)
+   * These modules have the highest change impact
+   */
+  calculateBlastRadius(graph) {
+    const modules = Array.from(graph.nodes.entries()).map(([path, node]) => ({
+      modulePath: path,
+      affectedModules: node.dependents.size
+    })).filter((m) => m.affectedModules > 0).sort((a, b) => b.affectedModules - a.affectedModules).slice(0, 5);
+    return modules;
+  }
+  /**
+   * Calculate Confidence Level based on analysis coverage
+   * HIGH: All modules analyzed successfully and no rule errors
+   * MEDIUM: Some modules analyzed or minor rule errors
+   * LOW: Rule errors occurred
+   */
+  calculateConfidenceLevel(totalModules, hasRuleErrors) {
+    if (hasRuleErrors) {
+      return "LOW";
+    }
+    if (totalModules >= 10) {
+      return "HIGH";
+    }
+    return "MEDIUM";
   }
 };
 
@@ -2559,35 +2733,6 @@ function printUnusedExportsSummary(violations) {
   console.log(pc4.bold("  \u{1F4A1} Suggested Fix:"));
   console.log("     Remove unused exports or document if part of public API.");
   console.log("     Add to exclusion patterns if used externally.");
-}
-function printDeadCodeSummary(violations) {
-  const unreachable = violations.filter((v) => v.message.includes("Unreachable"));
-  const unused = violations.filter((v) => v.message.includes("never used"));
-  console.log(pc4.dim("  Impact: ") + "Increases codebase size and confuses developers");
-  console.log();
-  if (unreachable.length > 0) {
-    console.log(pc4.dim("  Unreachable code:"));
-    unreachable.forEach((v, idx) => {
-      const fileName = getFileName(v.file);
-      const match = v.message.match(/in '([^']+)'/);
-      const functionName = match ? match[1] : "unknown";
-      console.log(`    ${pc4.yellow(idx + 1 + ".")} ${functionName} ${pc4.dim(`in ${fileName}`)}`);
-    });
-    console.log();
-  }
-  if (unused.length > 0) {
-    console.log(pc4.dim("  Unused variables:"));
-    unused.forEach((v, idx) => {
-      const fileName = getFileName(v.file);
-      const match = v.message.match(/Variable '([^']+)'/);
-      const varName = match ? match[1] : "unknown";
-      console.log(`    ${pc4.cyan(idx + 1 + ".")} ${varName} ${pc4.dim(`in ${fileName}`)}`);
-    });
-    console.log();
-  }
-  console.log(pc4.bold("  \u{1F4A1} Suggested Fix:"));
-  console.log("     Remove dead code. Use IDE refactoring tools to safely delete.");
-  console.log("     Enable strict TypeScript settings to catch unused code.");
 }
 
 // src/output/summaries/complexity-violations.ts
@@ -3133,7 +3278,6 @@ var SUMMARY_PRINTERS = {
   "Duplicate Code": printDuplicateCodeSummary,
   "Layer Violation": printLayerViolationSummary,
   "Forbidden Import": printForbiddenImportSummary,
-  "Dead Code": printDeadCodeSummary,
   "Long Parameter List": printLongParameterListSummary,
   "Feature Envy": printFeatureEnvySummary,
   "Data Clump": printDataClumpsSummary,
@@ -3208,6 +3352,14 @@ var TerminalReporter = class {
     console.log(`    ${complexityIcon} Complexity:   ${this.formatCategoryLine(complexity)}`);
     const hygieneIcon = this.getCategoryIcon(hygiene.impact);
     console.log(`    ${hygieneIcon} Hygiene:      ${this.formatCategoryLine(hygiene)}`);
+    console.log();
+    console.log(pc8.dim("  Categories:"));
+    console.log(pc8.dim("    \u2022 Structural:  Architecture violations (circular deps, layer violations)"));
+    console.log(pc8.dim("    \u2022 Design:      Coupling and design patterns (imports, parameters, code smells)"));
+    console.log(pc8.dim("    \u2022 Complexity:  Code complexity (nesting, function size, cyclomatic complexity)"));
+    console.log(pc8.dim("    \u2022 Hygiene:     Code cleanliness (duplicates, dead code, unused exports)"));
+    console.log();
+    console.log(pc8.dim("  Points: Penalty deducted from score (100 base). Impact: \u{1F534} HIGH | \u26A0\uFE0F  MEDIUM | \u2139\uFE0F  LOW"));
   }
   getCategoryIcon(impact) {
     if (impact === "HIGH") return pc8.red("\u{1F534}");
@@ -3234,6 +3386,14 @@ var TerminalReporter = class {
     if (result.totalLOC) {
       console.log(`  Total Lines of Code:   ${pc8.cyan(result.totalLOC.toLocaleString())}`);
     }
+    if (result.couplingRisk && result.couplingRisk.totalModules > 0) {
+      const { couplingRisk } = result;
+      const riskLevel = this.getCouplingRiskLevel(couplingRisk.overallRisk);
+      const riskColor = this.getCouplingRiskColor(couplingRisk.overallRisk);
+      console.log(`  Coupling Risk:         ${riskColor(`${couplingRisk.overallRisk.toFixed(1)}/100`)} ${pc8.dim(`[${riskLevel}]`)}`);
+      console.log(`  Avg Dependencies:      ${pc8.cyan(couplingRisk.projectAverageCe.toFixed(1))} modules/file`);
+    }
+    console.log();
     this.printArchitectureViolations(grouped);
     this.printGodFileDetails(grouped);
   }
@@ -3456,6 +3616,18 @@ var TerminalReporter = class {
         return 0;
     }
   }
+  getCouplingRiskLevel(risk) {
+    if (risk >= 75) return "EXTREME";
+    if (risk >= 50) return "HIGH";
+    if (risk >= 25) return "MEDIUM";
+    return "LOW";
+  }
+  getCouplingRiskColor(risk) {
+    if (risk >= 75) return pc8.red;
+    if (risk >= 50) return pc8.yellow;
+    if (risk >= 25) return pc8.cyan;
+    return pc8.green;
+  }
 };
 
 // src/output/json-reporter.ts
@@ -3463,15 +3635,24 @@ var JsonReporter = class {
   report(result, _verbose) {
     const output = {
       score: result.score,
+      architectureScore: result.architectureScore,
+      hygieneScore: result.hygieneScore,
       status: result.status,
+      confidenceLevel: result.confidenceLevel,
+      modulesAnalyzedPercent: result.modulesAnalyzedPercent,
       timestamp: result.timestamp,
+      projectName: result.projectName,
       summary: {
         critical: result.criticalCount,
         warnings: result.warningCount,
         info: result.infoCount,
         healthyModules: result.healthyModuleCount,
-        totalModules: result.totalModules
+        totalModules: result.totalModules,
+        totalLOC: result.totalLOC
       },
+      scoreBreakdown: result.scoreBreakdown,
+      couplingRisk: result.couplingRisk,
+      blastRadius: result.blastRadius,
       topRisks: result.topRisks.map((v) => ({
         rule: v.rule,
         severity: v.severity,
@@ -3497,16 +3678,30 @@ var JsonReporter = class {
 
 // src/output/executive-reporter.ts
 import pc9 from "picocolors";
+import { basename as basename2 } from "path";
 var ExecutiveReporter = class _ExecutiveReporter {
   static REPORT_WIDTH = 78;
-  static PADDING_WITH_BORDER = 92;
-  static PADDING_WITH_ICONS = 90;
+  static BOX_INNER_WIDTH = 70;
+  // Width inside the box accounting for emoji visual width
   static TOP_CRITICAL_LIMIT = 5;
   static TOP_WARNINGS_LIMIT = 3;
   static TOP_RULES_LIMIT = 3;
   static SCORE_IMPROVEMENT_TARGET = 15;
   static PENALTY_IMPROVEMENT_FACTOR = 0.6;
   scoreCalculator = new ScoreCalculator();
+  /**
+   * Remove ANSI color codes to get actual text length
+   */
+  stripAnsi(str) {
+    return str.replace(/\u001b\[[0-9;]*m/g, "");
+  }
+  /**
+   * Get the actual character count using Array.from to handle Unicode properly
+   */
+  getPlainTextLength(str) {
+    const plain = this.stripAnsi(str);
+    return Array.from(plain).length;
+  }
   report(result, _) {
     console.log();
     this.printExecutiveHeader(result);
@@ -3538,32 +3733,81 @@ var ExecutiveReporter = class _ExecutiveReporter {
     console.log(pc9.cyan(border));
   }
   printArchitectureScore(result) {
-    const grade = this.scoreCalculator.getGrade(result.score);
-    const scoreColor = getScoreColor(result.score);
+    const grade = this.scoreCalculator.getGrade(result.architectureScore);
+    const scoreColor = getScoreColor(result.architectureScore);
     const statusIcon = getStatusIcon(result.status);
     const statusColor = getStatusColor(result.status);
     console.log(pc9.bold("\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510"));
-    console.log(pc9.bold(`\u2502  ARCHITECTURE HEALTH SCORE: ${scoreColor(pc9.bold(result.score.toString()))} / 100  [${grade}]`).padEnd(_ExecutiveReporter.PADDING_WITH_BORDER) + pc9.bold("\u2502"));
+    const titleText = `ARCHITECTURE HEALTH: ${scoreColor(pc9.bold(result.architectureScore.toString()))} / 100  [${grade}]`;
+    const titleLen = this.getPlainTextLength(titleText);
+    console.log(pc9.bold(`\u2502  ${titleText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - titleLen)} \u2502`));
+    const hygieneGrade = this.scoreCalculator.getGrade(result.hygieneScore);
+    const hygieneColor = getScoreColor(result.hygieneScore);
+    const hygText = `HYGIENE SCORE: ${hygieneColor(result.hygieneScore.toString())} / 100  [${hygieneGrade}]`;
+    const hygLen = this.getPlainTextLength(hygText);
+    console.log(pc9.bold(`\u2502  ${hygText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - hygLen)} \u2502`));
     console.log(pc9.bold("\u2502                                                                         \u2502"));
-    console.log(pc9.bold(`\u2502  Status: ${statusColor(`${statusIcon} ${result.status}`)}`.padEnd(_ExecutiveReporter.PADDING_WITH_BORDER)) + pc9.bold("\u2502"));
+    const statusText = `Status: ${statusColor(`${statusIcon} ${result.status}`)}`;
+    const statusLen = this.getPlainTextLength(statusText);
+    console.log(pc9.bold(`\u2502  ${statusText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - statusLen - 1)} \u2502`));
+    if (result.confidenceLevel) {
+      const confColor = result.confidenceLevel === "HIGH" ? pc9.green : result.confidenceLevel === "MEDIUM" ? pc9.yellow : pc9.red;
+      const confText = `Confidence: ${confColor(result.confidenceLevel)} (${result.modulesAnalyzedPercent?.toFixed(0)}% analyzed)`;
+      const confLen = this.getPlainTextLength(confText);
+      console.log(pc9.bold(`\u2502  ${confText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - confLen)} \u2502`));
+    }
     if (result.scoreBreakdown) {
       console.log(pc9.bold("\u2502                                                                         \u2502"));
-      console.log(pc9.bold("\u2502  Risk Breakdown:                                                        \u2502"));
+      console.log(pc9.bold("\u2502  Architecture Components (weighted):                                    \u2502"));
       const { structural, design, complexity, hygiene } = result.scoreBreakdown;
       if (structural.violations > 0) {
         const impact = structural.impact === "HIGH" ? pc9.red("HIGH RISK") : structural.impact;
-        console.log(pc9.bold(`\u2502    \u{1F534} Structural:  ${structural.violations} issues  -${structural.penalty.toFixed(1)} pts  ${impact}`.padEnd(_ExecutiveReporter.PADDING_WITH_ICONS)) + pc9.bold("\u2502"));
+        const text = `  \u{1F534} Structural (40%):  ${structural.violations} issues  -${structural.penalty.toFixed(1)} pts  ${impact}`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc9.bold(`\u2502  ${text}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - len)} \u2502`));
       }
       if (design.violations > 0) {
         const impact = design.impact === "HIGH" ? pc9.yellow("MEDIUM RISK") : design.impact;
-        console.log(pc9.bold(`\u2502    \u26A0\uFE0F  Design:      ${design.violations} issues  -${design.penalty.toFixed(1)} pts  ${impact}`.padEnd(_ExecutiveReporter.PADDING_WITH_ICONS)) + pc9.bold("\u2502"));
+        const text = `  \u26A0\uFE0F  Design (30%):      ${design.violations} issues  -${design.penalty.toFixed(1)} pts  ${impact}`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc9.bold(`\u2502  ${text}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - len + 1)} \u2502`));
       }
       if (complexity.violations > 0) {
-        console.log(pc9.bold(`\u2502    \u2139\uFE0F  Complexity:  ${complexity.violations} issues  -${complexity.penalty.toFixed(1)} pts`.padEnd(_ExecutiveReporter.PADDING_WITH_ICONS)) + pc9.bold("\u2502"));
+        const text = `  \u2139\uFE0F  Complexity (20%):  ${complexity.violations} issues  -${complexity.penalty.toFixed(1)} pts`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc9.bold(`\u2502  ${text}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - len + 1)} \u2502`));
       }
+      console.log(pc9.bold("\u2502                                                                         \u2502"));
+      console.log(pc9.bold("\u2502  Code Hygiene (separate metric):                                        \u2502"));
       if (hygiene.violations > 0) {
-        console.log(pc9.bold(`\u2502    \u{1F9F9} Hygiene:     ${hygiene.violations} issues  -${hygiene.penalty.toFixed(1)} pts`.padEnd(_ExecutiveReporter.PADDING_WITH_ICONS)) + pc9.bold("\u2502"));
+        const text = `  \u{1F9F9} Hygiene (10%):     ${hygiene.violations} issues  -${hygiene.penalty.toFixed(1)} pts`;
+        const len = this.getPlainTextLength(text);
+        console.log(pc9.bold(`\u2502  ${text}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - len - 1)} \u2502`));
       }
+    }
+    if (result.couplingRisk && result.couplingRisk.totalModules > 0) {
+      console.log(pc9.bold("\u2502                                                                         \u2502"));
+      console.log(pc9.bold("\u2502  Coupling Metrics:                                                      \u2502"));
+      const { couplingRisk } = result;
+      const riskLevel = this.getRiskLevel(couplingRisk.overallRisk);
+      const riskColor = this.getRiskColor(couplingRisk.overallRisk);
+      const riskText = `  \u{1F525} Coupling Risk: ${riskColor(couplingRisk.overallRisk.toFixed(1))}/100 [${riskLevel}]`;
+      const riskLen = this.getPlainTextLength(riskText);
+      console.log(pc9.bold(`\u2502  ${riskText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - riskLen - 1)} \u2502`));
+      const modulesText = `     ${couplingRisk.totalModules} modules, ${couplingRisk.projectAverageCe.toFixed(1)} avg deps, ${(couplingRisk.projectAverageInstability * 100).toFixed(0)}% instability`;
+      const modulesLen = this.getPlainTextLength(modulesText);
+      console.log(pc9.bold(`\u2502  ${modulesText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - modulesLen)} \u2502`));
+    }
+    if (result.blastRadius && result.blastRadius.length > 0) {
+      console.log(pc9.bold("\u2502                                                                         \u2502"));
+      console.log(pc9.bold("\u2502  \u26A1 Blast Radius (Top Change Impact):                                   \u2502"));
+      const top3 = result.blastRadius.slice(0, 3);
+      top3.forEach((module) => {
+        const fileName = basename2(module.modulePath);
+        const impactText = `     ${fileName} \u2192 ${module.affectedModules} modules affected`;
+        const impactLen = this.getPlainTextLength(impactText);
+        console.log(pc9.bold(`\u2502  ${impactText}${" ".repeat(_ExecutiveReporter.BOX_INNER_WIDTH - impactLen)} \u2502`));
+      });
     }
     console.log(pc9.bold("\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"));
   }
@@ -3661,6 +3905,18 @@ var ExecutiveReporter = class _ExecutiveReporter {
   estimateScoreImprovement(violations) {
     const totalPenalty = violations.reduce((sum, v) => sum + v.penalty, 0);
     return Math.round(totalPenalty * _ExecutiveReporter.PENALTY_IMPROVEMENT_FACTOR);
+  }
+  getRiskLevel(risk) {
+    if (risk >= 75) return "EXTREME";
+    if (risk >= 50) return "HIGH";
+    if (risk >= 25) return "MEDIUM";
+    return "LOW";
+  }
+  getRiskColor(risk) {
+    if (risk >= 75) return pc9.red;
+    if (risk >= 50) return pc9.yellow;
+    if (risk >= 25) return pc9.cyan;
+    return pc9.green;
   }
 };
 

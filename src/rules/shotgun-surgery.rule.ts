@@ -1,7 +1,7 @@
 import { relative } from 'path';
 import { Rule } from './rule-interface.js';
-import { Violation, Severity } from '../core/types.js';
-import { RuleContext } from '../core/rule-context.js';
+import { Violation, Severity } from '@core/types.js';
+import { RuleContext } from '@core/rule-context.js';
 import { Project } from 'ts-morph';
 import { getThresholdFromConfig, processSourceFiles } from './utils/rule-helpers.js';
 import { createViolation } from './utils/violation-utils.js';
@@ -34,6 +34,26 @@ export class ShotgunSurgeryRule implements Rule {
     this.trackImports(sourceFiles, context.rootPath, symbolUsages);
 
     return this.generateViolations(symbolUsages, threshold);
+  }
+
+  /**
+   * Check if a module is a utility/helper/shared module
+   * These are meant to be used across many files
+   */
+  private isUtilityModule(modulePath: string): boolean {
+    const utilityPatterns = [
+      '/utils/',
+      '/helpers/',
+      '/shared/',
+      '/lib/',
+      '/common/',
+      'utils.ts',
+      'helpers.ts',
+      'shared.ts',
+      'constants.ts',
+    ];
+    
+    return utilityPatterns.some(pattern => modulePath.includes(pattern));
   }
 
   private collectExportedSymbols(
@@ -95,9 +115,14 @@ export class ShotgunSurgeryRule implements Rule {
 
           const importedPath = relative(rootPath, importedFile.getFilePath());
           
+          // Always track namespace imports - they indicate strong coupling regardless of module type
+          this.trackNamespaceImport(importDecl, importedPath, relativePath, symbolUsages);
+          
+          // Skip utility/helper/shared modules for named and default imports - they're meant to be used widely
+          if (this.isUtilityModule(importedPath)) continue;
+          
           this.trackNamedImports(importDecl, importedPath, relativePath, symbolUsages);
           this.trackDefaultImport(importDecl, importedPath, relativePath, symbolUsages);
-          this.trackNamespaceImport(importDecl, importedPath, relativePath, symbolUsages);
         }
       }
     );

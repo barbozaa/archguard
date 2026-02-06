@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { Violation } from '../../core/types.js';
+import { Violation } from '@core/types.js';
 
 export function printGodFileSummary(violations: Violation[]): void {
   const sortedBySize = violations

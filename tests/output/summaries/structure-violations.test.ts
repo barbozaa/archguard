@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as structureViolations from '../../../src/output/summaries/structure-violations.js';
-import type { Violation } from '../../../src/core/types.js';
+import * as structureViolations from '@output/summaries/structure-violations.js';
+import type { Violation } from '@core/types.js';
 
 describe('Structure Violations Summaries', () => {
   beforeEach(() => {

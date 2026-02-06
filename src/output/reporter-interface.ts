@@ -1,4 +1,4 @@
-import { AnalysisResult } from '../core/types.js';
+import { AnalysisResult } from '@core/types.js';
 
 /**
  * Reporter interface that all output formatters must implement

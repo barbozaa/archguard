@@ -1,6 +1,6 @@
 import pc from 'picocolors';
-import { Violation } from '../../core/types.js';
-import { getFileName } from '../utils/violation-utils.js';
+import { Violation } from '@core/types.js';
+import { getFileName } from '@output/utils/violation-utils.js';
 import { printImpact, printSuggestedFix, printNumberedList, printSummaryStats, extractTotalFromMessages } from './summary-helpers.js';
 
 export function printMissingTestsSummary(violations: Violation[]): void {
@@ -83,38 +83,4 @@ export function printUnusedExportsSummary(violations: Violation[]): void {
   console.log(pc.bold('  💡 Suggested Fix:'));
   console.log('     Remove unused exports or document if part of public API.');
   console.log('     Add to exclusion patterns if used externally.');
-}
-
-export function printDeadCodeSummary(violations: Violation[]): void {
-  const unreachable = violations.filter(v => v.message.includes('Unreachable'));
-  const unused = violations.filter(v => v.message.includes('never used'));
-
-  console.log(pc.dim('  Impact: ') + 'Increases codebase size and confuses developers');
-  console.log();
-  
-  if (unreachable.length > 0) {
-    console.log(pc.dim('  Unreachable code:'));
-    unreachable.forEach((v, idx) => {
-      const fileName = getFileName(v.file);
-      const match = v.message.match(/in '([^']+)'/);
-      const functionName = match ? match[1] : 'unknown';
-      console.log(`    ${pc.yellow((idx + 1) + '.')} ${functionName} ${pc.dim(`in ${fileName}`)}`);
-    });
-    console.log();
-  }
-
-  if (unused.length > 0) {
-    console.log(pc.dim('  Unused variables:'));
-    unused.forEach((v, idx) => {
-      const fileName = getFileName(v.file);
-      const match = v.message.match(/Variable '([^']+)'/);
-      const varName = match ? match[1] : 'unknown';
-      console.log(`    ${pc.cyan((idx + 1) + '.')} ${varName} ${pc.dim(`in ${fileName}`)}`);
-    });
-    console.log();
-  }
-
-  console.log(pc.bold('  💡 Suggested Fix:'));
-  console.log('     Remove dead code. Use IDE refactoring tools to safely delete.');
-  console.log('     Enable strict TypeScript settings to catch unused code.');
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateSeverity, calculatePenalty } from '../../../src/rules/utils/severity-calculator.js';
-import type { SeverityThresholds, PenaltyConfig } from '../../../src/rules/utils/severity-calculator.js';
+import { calculateSeverity, calculatePenalty } from '@rules/utils/severity-calculator.js';
+import type { SeverityThresholds, PenaltyConfig } from '@rules/utils/severity-calculator.js';
 
 describe('severity-calculator', () => {
   describe('calculateSeverity', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as complexityViolations from '../../../src/output/summaries/complexity-violations.js';
-import type { Violation } from '../../../src/core/types.js';
+import * as complexityViolations from '@output/summaries/complexity-violations.js';
+import type { Violation } from '@core/types.js';
 
 describe('Complexity Violations Summaries', () => {
   beforeEach(() => {

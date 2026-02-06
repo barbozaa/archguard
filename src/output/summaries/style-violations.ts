@@ -1,6 +1,6 @@
 import pc from 'picocolors';
-import { Violation } from '../../core/types.js';
-import { getFileName } from '../utils/violation-utils.js';
+import { Violation } from '@core/types.js';
+import { getFileName } from '@output/utils/violation-utils.js';
 import { printImpact, printSuggestedFix, printNumberedList, printSummaryStats, extractTotalFromMessages, formatFileLocation } from './summary-helpers.js';
 
 export function printMagicNumbersSummary(violations: Violation[]): void {

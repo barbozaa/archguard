@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ConfigLoader } from '../../src/config/config-loader.js';
+import { ConfigLoader } from '@config/config-loader.js';
 import { existsSync, writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 

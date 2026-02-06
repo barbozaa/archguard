@@ -2,7 +2,7 @@ import { SyntaxKind, Node } from 'ts-morph';
 import { FunctionAnalysisRule, FunctionCheckContext, ArrowFunctionCheckContext } from './base/function-analysis.rule.js';
 import { calculateSeverity, calculatePenalty, SeverityThresholds } from './utils/severity-calculator.js';
 import { STANDARD_PENALTY_CONFIG, COMPLEXITY_IMPACT, createSeverityThresholds } from './utils/function-analysis-config.js';
-import { Severity } from '../core/types.js';
+import { Severity } from '@core/types.js';
 
 /**
  * High Cyclomatic Complexity Rule
