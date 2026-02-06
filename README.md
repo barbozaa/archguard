@@ -1862,7 +1862,7 @@ npm run build
 
 ## 📝 License
 
-MIT © [Your Name]
+MIT © barbozaa
 
 ---
 
