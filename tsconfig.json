@@ -19,11 +19,10 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@core/*": ["src/core/*"],
-      "@rules/*": ["src/rules/*"],
-      "@output/*": ["src/output/*"],
-      "@config/*": ["src/config/*"],
+      "@domain/*": ["src/domain/*"],
+      "@application/*": ["src/application/*"],
+      "@infrastructure/*": ["src/infrastructure/*"],
+      "@presentation/*": ["src/presentation/*"],
       "@tests/*": ["tests/*"]
     }
   },

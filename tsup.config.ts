@@ -1,16 +1,11 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/cli/cli.ts'],
+  entry: ['src/presentation/cli.ts'],
   format: ['esm'],
   target: 'node18',
-  outDir: 'bin',
+  outDir: 'dist',
   clean: true,
   dts: false,
   shims: false,
-  esbuildOptions(options) {
-    options.banner = {
-      js: '',
-    };
-  },
 });

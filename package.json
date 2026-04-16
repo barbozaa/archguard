@@ -1,13 +1,12 @@
 {
   "name": "@barbozaa/archguard",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Production-grade architecture analysis CLI that detects structural risks and assigns health scores",
   "type": "module",
   "bin": {
-    "archguard": "./bin/cli.js"
+    "archguard": "./dist/cli.js"
   },
   "files": [
-    "bin",
     "dist",
     "README.md",
     "LICENSE"

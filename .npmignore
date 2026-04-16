@@ -3,6 +3,7 @@ src/
 tests/
 *.test.ts
 *.spec.ts
+bin/
 
 # Build configuration
 tsconfig.json

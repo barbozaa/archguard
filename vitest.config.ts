@@ -4,11 +4,10 @@ import { resolve } from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-      '@core': resolve(__dirname, './src/core'),
-      '@rules': resolve(__dirname, './src/rules'),
-      '@output': resolve(__dirname, './src/output'),
-      '@config': resolve(__dirname, './src/config'),
+      '@domain': resolve(__dirname, './src/domain'),
+      '@application': resolve(__dirname, './src/application'),
+      '@infrastructure': resolve(__dirname, './src/infrastructure'),
+      '@presentation': resolve(__dirname, './src/presentation'),
       '@tests': resolve(__dirname, './tests'),
     },
   },
@@ -22,7 +21,7 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: [
         'node_modules/**',
-        'bin/**',
+        'dist/**',
         'tests/**',
         '**/*.spec.ts',
         '**/*.test.ts',
