@@ -13,6 +13,7 @@
 
 // === STRUCTURAL ARCHITECTURE ===
 export { LayerViolationRule } from './layer-violation.rule.js';
+export { FeatureBoundaryRule } from './feature-boundary.rule.js';
 
 // === COUPLING ANALYSIS ===
 export { TooManyImportsRule } from './too-many-imports.rule.js';

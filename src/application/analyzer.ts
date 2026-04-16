@@ -1,8 +1,9 @@
 import { ProjectLoader } from '@infrastructure/project-loader.js';
 import { GraphBuilder } from '@infrastructure/graph-builder.js';
 import { CouplingRiskAnalyzer } from '@application/coupling-risk-analyzer.js';
+import { Project } from 'ts-morph';
 import { Rule } from '@domain/rule.js';
-import { AnalysisResult, DependencyGraph, RuleError } from '@domain/types.js';
+import { AnalysisResult, Violation, DependencyGraph, RuleError, BlastRadiusModule, ConfidenceLevel } from '@domain/types.js';
 import { Config } from '@infrastructure/config/config-schema.js';
 import { ScoreCalculator } from '@domain/scoring/score-calculator.js';
 import { RiskRanker } from '@domain/scoring/risk-ranker.js';
@@ -12,6 +13,7 @@ import { join, basename } from 'path';
 
 import {
   LayerViolationRule,
+  FeatureBoundaryRule,
   TooManyImportsRule,
   ShotgunSurgeryRule,
   DataClumpsRule,
@@ -35,6 +37,7 @@ export class Analyzer {
   private rules: Rule[] = [
     // Structural architecture
     new LayerViolationRule(),
+    new FeatureBoundaryRule(),
 
     // Coupling analysis
     new TooManyImportsRule(),
@@ -121,12 +124,12 @@ export class Analyzer {
   }
 
   private runRules(
-    project: any,
+    project: Project,
     graph: DependencyGraph,
     config: Config,
     rootPath: string
-  ): { violations: any[]; errors: RuleError[] } {
-    const allViolations: any[] = [];
+  ): { violations: Violation[]; errors: RuleError[] } {
+    const allViolations: Violation[] = [];
     const ruleErrors: RuleError[] = [];
     const context = createRuleContext(project, graph, config, rootPath);
 
@@ -146,7 +149,7 @@ export class Analyzer {
     return { violations: allViolations, errors: ruleErrors };
   }
 
-  private calculateBlastRadius(graph: DependencyGraph): import('@domain/types.js').BlastRadiusModule[] {
+  private calculateBlastRadius(graph: DependencyGraph): BlastRadiusModule[] {
     return Array.from(graph.nodes.entries())
       .map(([path, node]) => ({ modulePath: path, affectedModules: node.dependents.size }))
       .filter(m => m.affectedModules > 0)
@@ -157,7 +160,7 @@ export class Analyzer {
   private calculateConfidenceLevel(
     totalModules: number,
     hasRuleErrors: boolean
-  ): import('@domain/types.js').ConfidenceLevel {
+  ): ConfidenceLevel {
     if (hasRuleErrors) return 'LOW';
     if (totalModules >= 10) return 'HIGH';
     return 'MEDIUM';

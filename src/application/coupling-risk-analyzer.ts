@@ -154,7 +154,7 @@ export class CouplingRiskAnalyzer {
    */
   private getLayerViolationCount(modulePath: string, violations: Violation[]): number {
     return violations.filter(v =>
-      v.rule === 'layer-violation' &&
+      (v.rule === 'Layer Violation' || v.rule === 'Feature Boundary') &&
       v.file === modulePath
     ).length;
   }

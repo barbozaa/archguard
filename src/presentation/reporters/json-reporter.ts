@@ -1,5 +1,10 @@
 import { Reporter } from '@domain/reporter.js';
 import { AnalysisResult } from '@domain/types.js';
+import {
+  serializeViolation,
+  serializeViolationBrief,
+  serializeResultSummary,
+} from '@presentation/utils/violation-utils.js';
 
 /**
  * JSON reporter for CI/CD integration
@@ -7,43 +12,12 @@ import { AnalysisResult } from '@domain/types.js';
 export class JsonReporter implements Reporter {
   report(result: AnalysisResult, _verbose: boolean): void {
     const output = {
-      score: result.score,
-      architectureScore: result.architectureScore,
-      hygieneScore: result.hygieneScore,
-      status: result.status,
-      confidenceLevel: result.confidenceLevel,
+      ...serializeResultSummary(result),
       modulesAnalyzedPercent: result.modulesAnalyzedPercent,
-      timestamp: result.timestamp,
-      projectName: result.projectName,
-      summary: {
-        critical: result.criticalCount,
-        warnings: result.warningCount,
-        info: result.infoCount,
-        healthyModules: result.healthyModuleCount,
-        totalModules: result.totalModules,
-        totalLOC: result.totalLOC,
-      },
-      scoreBreakdown: result.scoreBreakdown,
       couplingRisk: result.couplingRisk,
       blastRadius: result.blastRadius,
-      topRisks: result.topRisks.map(v => ({
-        rule: v.rule,
-        severity: v.severity,
-        file: v.file,
-        relatedFile: v.relatedFile,
-        line: v.line,
-        message: v.message,
-        impact: v.impact,
-        suggestedFix: v.suggestedFix,
-      })),
-      violations: result.violations.map(v => ({
-        rule: v.rule,
-        severity: v.severity,
-        file: v.file,
-        relatedFile: v.relatedFile,
-        line: v.line,
-        message: v.message,
-      })),
+      topRisks: result.topRisks.map(serializeViolation),
+      violations: result.violations.map(serializeViolationBrief),
     };
 
     console.log(JSON.stringify(output, null, 2));

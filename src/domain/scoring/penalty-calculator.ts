@@ -61,6 +61,7 @@ export class PenaltyCalculator {
   private readonly ruleMetadata: Map<string, RuleMetadata> = new Map([
     // === STRUCTURAL ARCHITECTURE ===
     ['layer-violation', { name: 'layer-violation', weight: 10, category: 'structural' }],
+    ['feature-boundary', { name: 'feature-boundary', weight: 10, category: 'structural' }],
 
     // === COUPLING & DESIGN ===
     ['too-many-imports', { name: 'too-many-imports', weight: 7, category: 'design' }],
