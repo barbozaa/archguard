@@ -4,7 +4,7 @@
   "description": "Production-grade architecture analysis CLI that detects structural risks and assigns health scores",
   "type": "module",
   "bin": {
-    "archguard": "./dist/cli.js"
+    "archguard": "dist/cli.js"
   },
   "files": [
     "dist",
