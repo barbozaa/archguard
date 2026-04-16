@@ -435,8 +435,8 @@ Use `--format json` for machine-readable output and `--fail-on-error` to block P
 ArchGuard includes a Model Context Protocol server, allowing LLMs (Cursor, Claude, etc.) to analyze your architecture directly.
 
 ```bash
-# Run the MCP server
-archguard-mcp
+# Run the MCP server from npm package
+npm exec --yes --package=@barbozaa/archguard --call "archguard-mcp"
 ```
 
 **Available tools:**
@@ -454,8 +454,14 @@ archguard-mcp
 {
   "mcpServers": {
     "archguard": {
-      "command": "npx",
-      "args": ["@barbozaa/archguard-mcp"]
+      "command": "npm",
+      "args": [
+        "exec",
+        "--yes",
+        "--package=@barbozaa/archguard",
+        "--call",
+        "archguard-mcp"
+      ]
     }
   }
 }
