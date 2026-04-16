@@ -50,6 +50,20 @@ export function generateDataClumpsActions(violations: Violation[]): NextAction[]
   });
 }
 
+export function generateFeatureBoundaryActions(violations: Violation[]): NextAction[] {
+  return violations.map(v => {
+    const files = v.relatedFile
+      ? `${getFileName(v.file)} → ${getFileName(v.relatedFile)}`
+      : getFileName(v.file);
+    return {
+      description: `Fix feature boundary violation: ${files}`,
+      priority: 'HIGH',
+      effort: '2-4h',
+      impact: 'Restores feature isolation and team autonomy',
+    };
+  });
+}
+
 export function generateShotgunSurgeryActions(violations: Violation[]): NextAction[] {
   return violations
     .map(v => ({

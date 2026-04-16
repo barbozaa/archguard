@@ -1,5 +1,6 @@
 import { Project, SourceFile } from 'ts-morph';
 import { resolve, relative } from 'path';
+import { existsSync } from 'fs';
 import { ProjectContext } from '@domain/types.js';
 import { Config } from '@infrastructure/config/config-schema.js';
 import { shouldSkipNodeModules, isTestFile } from '@domain/rules/utils/rule-helpers.js';
@@ -60,22 +61,18 @@ export class ProjectLoader {
   }
 
   private findTsConfig(rootPath: string): string {
-    // Try common locations
     const candidates = [
       resolve(rootPath, 'tsconfig.json'),
       resolve(rootPath, 'src', 'tsconfig.json'),
     ];
 
-    for (const path of candidates) {
-      try {
-        return path;
-      } catch {
-        continue;
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate;
       }
     }
 
-    // Fallback to undefined - ts-morph will handle it
-    return resolve(rootPath, 'tsconfig.json');
+    return candidates[0];
   }
 
   private filterSourceFiles(

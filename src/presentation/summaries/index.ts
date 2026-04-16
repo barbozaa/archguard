@@ -2,7 +2,7 @@
  * Violation summary printers — one per active rule
  */
 
-export { printLayerViolationSummary } from './structure-violations.js';
+export { printLayerViolationSummary, printFeatureBoundarySummary } from './structure-violations.js';
 
 export { printTooManyImportsSummary } from './complexity-violations.js';
 

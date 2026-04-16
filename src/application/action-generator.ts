@@ -2,6 +2,7 @@ import { AnalysisResult, NextAction } from '@domain/types.js';
 import { groupViolationsByType } from '@presentation/utils/violation-utils.js';
 import {
   generateLayerViolationActions,
+  generateFeatureBoundaryActions,
   generateTooManyImportsActions,
   generateDataClumpsActions,
   generateShotgunSurgeryActions,
@@ -16,6 +17,10 @@ export function generateNextActions(result: AnalysisResult): NextAction[] {
 
   if (grouped['Layer Violation']) {
     actions.push(...generateLayerViolationActions(grouped['Layer Violation']));
+  }
+
+  if (grouped['Feature Boundary']) {
+    actions.push(...generateFeatureBoundaryActions(grouped['Feature Boundary']));
   }
 
   if (grouped['Too Many Imports']) {

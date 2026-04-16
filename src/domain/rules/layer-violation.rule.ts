@@ -1,86 +1,57 @@
-import { Rule } from '@domain/rule.js';
-import { Violation, RuleContext, Severity } from '@domain/types.js';
-import { processSourceFiles } from './utils/rule-helpers.js';
-import { createArchitectureViolation } from './utils/violation-utils.js';
+import { Severity } from '@domain/types.js';
+import { Config } from '@infrastructure/config/config-schema.js';
+import { BoundaryRule } from './base/boundary.rule.js';
+import { BoundaryClassification, BoundaryViolationParams } from './utils/graph-boundary-walker.js';
+
+const KNOWN_LAYERS = ['ui', 'application', 'domain', 'infra', 'infrastructure'];
 
 /**
- * Detects layer violations based on configured architecture rules
+ * Detects layer violations based on configured architecture rules.
+ * Vertical boundaries: domain → application → infrastructure.
  */
-export class LayerViolationRule implements Rule {
-  name = 'layer-violation';
-  severity: Severity = 'critical';
-  penalty = 8;
+export class LayerViolationRule extends BoundaryRule {
+  readonly name = 'layer-violation';
+  readonly severity: Severity = 'critical';
+  readonly penalty = 8;
 
-  check(context: RuleContext): Violation[] {
-    const { project, graph, config, rootPath } = context;
-    const violations: Violation[] = [];
-    
-    if (!config.rules?.layerRules) {
-      return violations;
-    }
+  protected isEnabled(config: Config): boolean {
+    return !!config.rules?.layerRules;
+  }
 
-    const layerRules = config.rules.layerRules;
+  protected classify(filePath: string, config: Config): BoundaryClassification | null {
+    const layerRules = config.rules!.layerRules as Record<string, string[]>;
+    const layer = this.getLayer(filePath);
+    if (!layer || !layerRules[layer]) return null;
+    return { zone: layer, allowed: layerRules[layer] };
+  }
 
-    processSourceFiles(
-      project.getSourceFiles(),
-      rootPath,
-      (_, filePath, relativePath) => {
-        const fileLayer = this.getLayer(relativePath);
-
-        if (!fileLayer || !layerRules[fileLayer]) {
-          return;
-        }
-
-        const allowedLayers = layerRules[fileLayer];
-        const node = graph.nodes.get(relativePath);
-
-        if (!node) {
-          return;
-        }
-
-        for (const dependency of node.dependencies) {
-          const depLayer = this.getLayer(dependency);
-          
-          if (!depLayer) {
-            continue;
-          }
-
-          if (!allowedLayers.includes(depLayer) && depLayer !== fileLayer) {
-          // Construir paths absolutos para las factories
-          const depFilePath = `${rootPath}/${dependency}`;
-          
-          violations.push(createArchitectureViolation({
-            rule: 'Layer Violation',
-            severity: this.severity,
-            message: `${fileLayer} layer importing from ${depLayer} layer`,
-            file: filePath,
-            relatedFile: depFilePath,
-            rootPath,
-            impact: `Violates architectural boundaries. The ${fileLayer} layer should not depend on ${depLayer}. This breaks separation of concerns and creates unwanted coupling between layers.`,
-            suggestedFix: `Restructure dependencies to follow the layer hierarchy:\n  ${fileLayer} → [${allowedLayers.join(', ')}]\n\nConsider:\n  1. Moving shared logic to an allowed layer (${allowedLayers[0] || 'domain'})\n  2. Using dependency inversion (interfaces/abstractions)\n  3. Re-evaluating if ${dependency} belongs in a different layer`,
-            penalty: this.penalty,
-          }));
-        }
-      }
-      }
-    );
-
-    return violations;
+  protected violationParams(): BoundaryViolationParams {
+    return {
+      ruleName: 'Layer Violation',
+      severity: this.severity,
+      penalty: this.penalty,
+      formatMessage: (src, dep) =>
+        `${src} layer importing from ${dep} layer`,
+      formatImpact: (src, dep) =>
+        `Violates architectural boundaries. The ${src} layer should not depend on ${dep}. ` +
+        `This breaks separation of concerns and creates unwanted coupling between layers.`,
+      formatFix: (src, _dep, allowed) => {
+        const list = Array.from(allowed);
+        return `Restructure dependencies to follow the layer hierarchy:\n` +
+          `  ${src} → [${list.join(', ')}]\n\nConsider:\n` +
+          `  1. Moving shared logic to an allowed layer (${list[0] || 'domain'})\n` +
+          `  2. Using dependency inversion (interfaces/abstractions)\n` +
+          `  3. Re-evaluating if the dependency belongs in a different layer`;
+      },
+    };
   }
 
   private getLayer(filePath: string): string | null {
-    // Extract layer from path (e.g., src/ui/... -> ui)
-    const parts = filePath.split('/');
-    
-    // Common layer names
-    const layers = ['ui', 'application', 'domain', 'infra', 'infrastructure'];
-    
-    for (const part of parts) {
-      if (layers.includes(part.toLowerCase())) {
+    for (const part of filePath.split('/')) {
+      if (KNOWN_LAYERS.includes(part.toLowerCase())) {
         return part.toLowerCase();
       }
     }
-
     return null;
   }
 }

@@ -32,7 +32,8 @@ export class TooManyImportsRule implements Rule {
     const violations: Violation[] = [];
 
     // Get threshold from config or use default
-    const threshold = (config.rules as any)?.['too-many-imports']?.maxImports || 15;
+    const ruleConfig = config.rules?.['too-many-imports'] as { maxImports?: number } | undefined;
+    const threshold = ruleConfig?.maxImports || 15;
 
     processSourceFiles(
       project.getSourceFiles(),

@@ -63,17 +63,23 @@ archguard . --fail-on-error
 
 # Use custom config file
 archguard . --config ./archguard.config.json
+
+# Compare architecture between branches (CI killer feature)
+archguard . --diff main
+
+# JSON diff for CI pipelines
+archguard . --diff main --format json --fail-on-error
 ```
 
 ---
 
 ## 📋 Architecture Rules
 
-ArchGuard analyzes your codebase with **5 specialized rules** in 3 categories. Every rule requires whole-project analysis — things ESLint cannot do.
+ArchGuard analyzes your codebase with **6 specialized rules** in 3 categories. Every rule requires whole-project analysis — things ESLint cannot do.
 
 | Category | Rules | Multiplier |
 |----------|-------|-----------|
-| 🏗️ **Structural** | Layer Violations | **1.2×** |
+| 🏗️ **Structural** | Layer Violations · Feature Boundaries | **1.2×** |
 | 🎨 **Design** | Too Many Imports · Shotgun Surgery · Data Clumps | **1.0×** |
 | 🧹 **Hygiene** | Duplicate Code | **0.5×** |
 
@@ -110,6 +116,40 @@ import { getUserById } from '../../application/user/queries';
 ```
 
 > Layer detection is path-based. Layer names must match a directory segment (`presentation`, `application`, `domain`, `infrastructure`, `infra`, `ui`).
+
+---
+
+### 🏗️ Feature Boundary — `critical`
+
+Enforces horizontal isolation between feature modules. Prevents `features/auth` from importing `features/payments` unless explicitly allowed.
+
+**Why it matters:** Without feature boundaries, business features become entangled — making independent deployment, team ownership, and future extraction into separate packages impossible.
+
+```typescript
+// ❌ BAD: Auth feature importing directly from payments
+// src/features/auth/login.ts
+import { validateCard } from '../../features/payments/validator';
+
+// ✅ GOOD: Use shared module or event-driven communication
+// src/features/auth/login.ts
+import { notify } from '../../features/shared/events';
+```
+
+**Configuration:**
+```json
+{
+  "boundaryRules": {
+    "enforce": true,
+    "boundaries": [
+      { "feature": "features/auth",     "allowImportsFrom": ["features/shared"] },
+      { "feature": "features/payments",  "allowImportsFrom": ["features/shared", "features/auth"] },
+      { "feature": "features/shared",    "allowImportsFrom": [] }
+    ]
+  }
+}
+```
+
+> Feature matching uses path prefixes. A file at `features/auth/login.ts` belongs to the `features/auth` boundary.
 
 ---
 
@@ -238,24 +278,24 @@ Create `archguard.config.json` in your project root:
 {
   "srcDirectory": "./src",
   "rules": {
-    "too-many-imports": {
-      "maxImports": 15
-    },
-    "shotgun-surgery": {
-      "minFiles": 5
-    },
-    "data-clumps": {
-      "minOccurrences": 3
-    },
-    "duplicate-code": {
-      "minLines": 5
-    },
+    "too-many-imports": { "maxImports": 15 },
+    "shotgun-surgery": { "minFiles": 5 },
+    "data-clumps": { "minOccurrences": 3 },
+    "duplicate-code": { "minLines": 5 },
     "layerRules": {
       "presentation": ["application", "domain"],
       "application": ["domain"],
       "domain": [],
       "infrastructure": ["domain"]
     }
+  },
+  "boundaryRules": {
+    "enforce": true,
+    "boundaries": [
+      { "feature": "features/auth",    "allowImportsFrom": ["features/shared"] },
+      { "feature": "features/payments", "allowImportsFrom": ["features/shared"] },
+      { "feature": "features/shared",   "allowImportsFrom": [] }
+    ]
   }
 }
 ```
@@ -268,6 +308,7 @@ Create `archguard.config.json` in your project root:
 | `data-clumps.minOccurrences` | `3` | Min occurrences for a parameter group to flag |
 | `duplicate-code.minLines` | `5` | Min lines for a duplicate block |
 | `layerRules` | `{}` | Layer dependency rules |
+| `boundaryRules` | disabled | Feature isolation boundaries |
 
 ---
 
@@ -356,6 +397,72 @@ archguard . --format json > architecture-report.json
 
 ---
 
+## 🔀 Architecture Diffing
+
+Compare architecture health between git branches — the killer feature for CI.
+
+```bash
+# Compare current branch against main
+archguard . --diff main
+```
+
+```
+  Architecture Diff Report
+  ────────────────────────────────────────────────────────────
+  Base branch:  main
+  Head branch:  feature/new-module
+  ────────────────────────────────────────────────────────────
+  Score:  95 → 92  (-3)
+  Violations:  2 → 5
+
+  ✗ 3 New Violations
+    • [warning] Too Many Imports: File has 18 imports (max: 15)
+      src/features/checkout/service.ts:1
+    ...
+
+  ✓ Resolved Violations
+    (none)
+
+  ↓ Verdict: Architecture DEGRADED
+```
+
+Use `--format json` for machine-readable output and `--fail-on-error` to block PRs that introduce new violations.
+
+---
+
+## 🤖 MCP Server (AI Integration)
+
+ArchGuard includes a Model Context Protocol server, allowing LLMs (Cursor, Claude, etc.) to analyze your architecture directly.
+
+```bash
+# Run the MCP server
+archguard-mcp
+```
+
+**Available tools:**
+
+| Tool | Description |
+|------|-------------|
+| `analyze_architecture` | Full analysis with score, violations, coupling metrics |
+| `get_violations` | Filtered violations by rule, severity, or file path |
+| `get_coupling_risk` | Ca/Ce/Instability metrics, hub detection, blast radius |
+| `explain_violation` | Detailed explanation of any rule (what, why, fix) |
+| `compare_branches` | Architecture diff between two git branches |
+
+**Cursor MCP config** (`~/.cursor/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "archguard": {
+      "command": "npx",
+      "args": ["@barbozaa/archguard-mcp"]
+    }
+  }
+}
+```
+
+---
+
 ## 🔌 CI/CD Integration
 
 ### GitHub Actions
@@ -369,11 +476,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npx @barbozaa/archguard . --fail-on-error
+      - run: npx @barbozaa/archguard . --diff origin/main --fail-on-error
 ```
+
+> `fetch-depth: 0` is required so git worktree can access the base branch.
 
 ### Fail on critical only
 
@@ -409,4 +520,4 @@ MIT © barbozaa
 
 ---
 
-Built with [ts-morph](https://github.com/dsherret/ts-morph) · [cac](https://github.com/cacjs/cac) · [picocolors](https://github.com/alexeyraspopov/picocolors)
+Built with [ts-morph](https://github.com/dsherret/ts-morph) · [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) · [cac](https://github.com/cacjs/cac) · [picocolors](https://github.com/alexeyraspopov/picocolors)

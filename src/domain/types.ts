@@ -118,3 +118,30 @@ export interface DependencyGraph {
   nodes: Map<string, DependencyNode>;
   cyclicGroups: string[][];
 }
+
+// ---------------------------------------------------------------------------
+// Architecture Diff
+// ---------------------------------------------------------------------------
+
+export interface ViolationDelta {
+  rule: string;
+  severity: Severity;
+  file: string;
+  message: string;
+  line?: number;
+  penalty: number;
+}
+
+export interface DiffResult {
+  baseBranch: string;
+  headBranch: string;
+  baseScore: number;
+  headScore: number;
+  scoreDelta: number;
+  baseViolationCount: number;
+  headViolationCount: number;
+  introduced: ViolationDelta[];
+  resolved: ViolationDelta[];
+  verdict: 'improved' | 'degraded' | 'unchanged';
+  summary: string;
+}

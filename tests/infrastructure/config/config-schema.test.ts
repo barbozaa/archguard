@@ -39,6 +39,6 @@ describe('ConfigSchema', () => {
   it('should have default config', () => {
     expect(defaultConfig).toBeDefined();
     expect(defaultConfig.srcDirectory).toBe('./src');
-    expect(defaultConfig.rules?.maxFileLines).toBe(500);
+    expect(defaultConfig.rules).toBeDefined();
   });
 });

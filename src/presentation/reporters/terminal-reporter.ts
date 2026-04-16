@@ -17,6 +17,7 @@ import {
 } from '@presentation/formatters.js';
 import {
   printLayerViolationSummary,
+  printFeatureBoundarySummary,
   printTooManyImportsSummary,
   printDataClumpsSummary,
   printShotgunSurgerySummary,
@@ -29,6 +30,7 @@ const SEPARATOR_WIDTH = 54;
 
 const SUMMARY_PRINTERS: Record<string, (violations: Violation[]) => void> = {
   'Layer Violation': printLayerViolationSummary,
+  'Feature Boundary': printFeatureBoundarySummary,
   'Too Many Imports': printTooManyImportsSummary,
   'Data Clumps': printDataClumpsSummary,
   'Shotgun Surgery': printShotgunSurgerySummary,

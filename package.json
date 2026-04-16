@@ -1,10 +1,11 @@
 {
   "name": "@barbozaa/archguard",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Production-grade architecture analysis CLI that detects structural risks and assigns health scores",
   "type": "module",
   "bin": {
-    "archguard": "dist/cli.js"
+    "archguard": "dist/cli.js",
+    "archguard-mcp": "dist/mcp-server.js"
   },
   "files": [
     "dist",
@@ -26,11 +27,12 @@
     "code-quality",
     "cli",
     "typescript",
-    "linter",
     "architecture-analysis",
     "dependency-graph",
-    "circular-dependencies",
-    "code-analysis"
+    "code-analysis",
+    "mcp",
+    "model-context-protocol",
+    "llm-tools"
   ],
   "author": "barbozaa",
   "license": "MIT",
@@ -43,6 +45,7 @@
   },
   "homepage": "https://github.com/barbozaa/archguard#readme",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "cac": "^6.7.14",
     "cli-table3": "^0.6.3",
     "picocolors": "^1.0.0",
