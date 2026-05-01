@@ -1,9 +1,17 @@
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { analyzeProject } from './analyze-project.js';
 import { AnalysisResult, DiffResult, Violation, ViolationDelta } from '@domain/types.js';
+
+/** Conservative allowlist for branch / ref names passed to git (no shell). */
+export function isSafeGitRef(ref: string): boolean {
+  if (!ref || ref.length > 256 || ref.startsWith('-') || ref.includes('..')) {
+    return false;
+  }
+  return /^[\w@./^~-]+$/.test(ref);
+}
 
 /**
  * Compares architecture between two git branches using git worktree.
@@ -21,6 +29,12 @@ export class DiffAnalyzer {
     baseBranch: string,
     configPath?: string,
   ): Promise<DiffResult> {
+    if (!isSafeGitRef(baseBranch)) {
+      throw new Error(
+        `Invalid git ref "${baseBranch}". Use a plain branch or tag name (letters, digits, /, ., _, @, ^, ~, -).`,
+      );
+    }
+
     const headBranch = this.getCurrentBranch(projectPath);
     const headResult = await analyzeProject(projectPath, configPath);
 
@@ -43,39 +57,38 @@ export class DiffAnalyzer {
   // -----------------------------------------------------------------------
 
   private getCurrentBranch(cwd: string): string {
-    try {
-      return execSync('git rev-parse --abbrev-ref HEAD', { cwd, encoding: 'utf-8' }).trim();
-    } catch {
+    const r = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd,
+      encoding: 'utf-8',
+      shell: false,
+    });
+    if (r.status !== 0 || !r.stdout) {
       return 'HEAD';
     }
+    return r.stdout.trim();
   }
 
   private createWorktree(repoCwd: string, targetDir: string, branch: string): void {
-    try {
-      execSync(`git worktree add --detach "${targetDir}" "${branch}"`, {
-        cwd: repoCwd,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-    } catch (error) {
+    const r = spawnSync('git', ['worktree', 'add', '--detach', targetDir, branch], {
+      cwd: repoCwd,
+      encoding: 'utf-8',
+      shell: false,
+    });
+    if (r.status !== 0) {
+      const errMsg = (r.stderr || r.stdout || '').toString().trim();
       throw new Error(
         `Failed to create git worktree for branch "${branch}". ` +
-        `Make sure the branch exists and the repo is clean.\n` +
-        `${error instanceof Error ? error.message : error}`
+          `Make sure the branch exists and the repo is clean.\n${errMsg}`,
       );
     }
   }
 
   private removeWorktree(repoCwd: string, targetDir: string): void {
-    try {
-      execSync(`git worktree remove --force "${targetDir}"`, {
-        cwd: repoCwd,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-    } catch {
-      // Best-effort cleanup; rmSync in the caller handles the directory
-    }
+    spawnSync('git', ['worktree', 'remove', '--force', targetDir], {
+      cwd: repoCwd,
+      encoding: 'utf-8',
+      shell: false,
+    });
   }
 
   // -----------------------------------------------------------------------
