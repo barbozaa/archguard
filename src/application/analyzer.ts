@@ -57,13 +57,25 @@ export class Analyzer {
   private couplingRiskAnalyzer = new CouplingRiskAnalyzer();
 
   async analyze(config: Config): Promise<AnalysisResult> {
+    const { result } = await this.analyzeWithGraph(config);
+    return result;
+  }
+
+  /**
+   * Full analysis plus dependency graph (for MCP / tooling: Mermaid, change-neighborhood, etc.).
+   */
+  async analyzeWithGraph(config: Config): Promise<{
+    result: AnalysisResult;
+    graph: DependencyGraph;
+  }> {
     const projectContext = await this.projectLoader.load(config);
     const project = this.projectLoader.getProject();
 
     const graph = this.graphBuilder.build(project, projectContext.rootPath);
     const { violations, errors } = this.runRules(project, graph, config, projectContext.rootPath);
 
-    const sourceFiles = project.getSourceFiles()
+    const sourceFiles = project
+      .getSourceFiles()
       .filter(sf => !sf.getFilePath().includes('node_modules'));
 
     const actualModuleCount = sourceFiles.length;
@@ -107,7 +119,7 @@ export class Analyzer {
       result.ruleErrors = errors;
     }
 
-    return result;
+    return { result, graph };
   }
 
   private getProjectName(rootPath: string): string {

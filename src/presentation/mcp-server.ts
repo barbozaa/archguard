@@ -4,13 +4,22 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { resolve } from 'path';
-import { analyzeProject } from '@application/analyze-project.js';
+import { analyzeProject, analyzeProjectWithGraph } from '@application/analyze-project.js';
 import { DiffAnalyzer } from '@application/diff-analyzer.js';
+import {
+  analyzeChangeImpact,
+  buildArchitectureReviewSummary,
+  buildDependencyLayerMermaid,
+  compareToBaselineReport,
+  explainViolationWithRepoContext,
+  validateArchguardConfigJson,
+} from '@application/mcp-insights.js';
+import { RULE_EXPLANATIONS, type RuleExplanationSlug } from '@application/rule-explanations.js';
 import { serializeViolation, serializeResultSummary } from '@presentation/utils/violation-utils.js';
 
 const server = new McpServer({
   name: 'archguard',
-  version: '1.3.1',
+  version: '1.5.0',
 });
 
 // ---------------------------------------------------------------------------
@@ -20,39 +29,6 @@ const server = new McpServer({
 function textResult(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
 }
-
-const RULE_EXPLANATIONS: Record<string, { what: string; why: string; fix: string }> = {
-  'layer-violation': {
-    what: 'A file imports from a layer it should not depend on, violating the configured architectural boundaries.',
-    why: 'Layer violations break separation of concerns. They create tight coupling between layers, making it impossible to swap implementations (e.g. change database) without touching higher layers. They also prevent proper unit testing since you can\'t mock a layer that\'s bypassed.',
-    fix: 'Route the dependency through the proper layer. If Presentation needs data, go through Application, not directly to Infrastructure. Use dependency inversion: depend on interfaces defined in inner layers, implemented in outer layers.',
-  },
-  'too-many-imports': {
-    what: 'A file has more import statements than the configured threshold (default: 15).',
-    why: 'High import count signals a file with too many responsibilities (SRP violation). It\'s tightly coupled to the rest of the codebase, fragile to changes, hard to test, and creates cognitive overload for developers reading it.',
-    fix: 'Split the file into focused modules, each with a single responsibility. Extract cohesive groups of functionality into their own files. Use facade patterns to reduce the number of direct dependencies.',
-  },
-  'shotgun-surgery': {
-    what: 'An exported symbol (function, class) is imported in many files (default: 5+), meaning any change to it forces updates across the codebase.',
-    why: 'High fan-out creates change amplification: one modification requires touching many files, increasing regression risk and coordination overhead. It often indicates poor encapsulation — internals are leaking across module boundaries.',
-    fix: 'Introduce a facade or service that centralizes access to the symbol. Downstream consumers depend on the facade instead, insulating them from changes to the underlying implementation.',
-  },
-  'data-clumps': {
-    what: 'The same group of 3+ parameters appears together in multiple function signatures (default: 3+ occurrences).',
-    why: 'Repeating parameter groups signal a missing abstraction. Those parameters form a cohesive concept that should be a type. Without it, parameters can be passed in wrong order, adding fields requires updating every signature, and the relationship between params is implicit.',
-    fix: 'Extract the parameter group into an interface or class (Value Object pattern). Replace the individual parameters with a single typed object. This makes function signatures cleaner, self-documenting, and easier to extend.',
-  },
-  'duplicate-code': {
-    what: 'Identical normalized code blocks (5+ lines) appear in multiple files.',
-    why: 'Duplicated logic means bugs must be fixed in multiple places. Over time, copies drift apart, leading to inconsistent behavior. It increases maintenance cost and testing burden.',
-    fix: 'Extract the duplicated logic into a shared function or utility module. Import it from all call sites. This creates a single source of truth that can be tested once and improved globally.',
-  },
-  'feature-boundary': {
-    what: 'A file inside one feature boundary imports from another feature that is not listed in its allowImportsFrom configuration.',
-    why: 'Feature isolation is critical for team autonomy and independent deployability. When feature/auth imports directly from feature/payments, changes to payments can break auth — forcing cross-team coordination, increasing regression risk, and making it impossible to extract features into separate packages or services later.',
-    fix: 'Move shared logic to a common module (e.g. "features/shared") and add it to allowImportsFrom. If the dependency is intentional, explicitly allow it in archguard.config.json. For loose coupling, consider event-driven communication between features.',
-  },
-};
 
 // ---------------------------------------------------------------------------
 // Tool: analyze_architecture
@@ -172,7 +148,7 @@ server.tool(
 
 server.tool(
   'explain_violation',
-  'Get a detailed explanation of a specific architecture rule: what it detects, why it matters, and how to fix it.',
+  'Explain an architecture rule (static text). Optionally pass projectPath + filePath to attach live violations and 1-hop import neighbors for that file — graph-backed context, not generic linter docs.',
   {
     rule: z.enum([
       'layer-violation',
@@ -182,18 +158,173 @@ server.tool(
       'data-clumps',
       'duplicate-code',
     ]).describe('The rule name to explain'),
+    projectPath: z.string().optional().describe('Required with filePath: project root'),
+    filePath: z
+      .string()
+      .optional()
+      .describe('Repo-relative file (e.g. src/application/analyzer.ts) — adds live matches + import graph'),
+    configPath: z.string().optional().describe('Path to archguard.config.json (optional)'),
   },
-  async ({ rule }) => {
-    const explanation = RULE_EXPLANATIONS[rule];
-    if (!explanation) {
-      return textResult({ error: `Unknown rule: ${rule}` });
-    }
+  async ({ rule, projectPath, filePath, configPath }) => {
+    try {
+      const explanation = RULE_EXPLANATIONS[rule as RuleExplanationSlug];
+      if (!explanation) {
+        return textResult({ error: `Unknown rule: ${rule}` });
+      }
 
-    return textResult({
-      rule,
-      ...explanation,
-      availableSeverities: ['info', 'warning', 'critical'],
-    });
+      if (filePath) {
+        if (!projectPath) {
+          return textResult({ error: 'projectPath is required when filePath is provided.' });
+        }
+        const ctx = await explainViolationWithRepoContext(
+          projectPath,
+          rule as RuleExplanationSlug,
+          filePath,
+          configPath,
+        );
+        return textResult({
+          rule,
+          what: explanation.what,
+          why: explanation.why,
+          fix: explanation.fix,
+          availableSeverities: ['info', 'warning', 'critical'],
+          liveContext: {
+            matchingViolationsInFile: ctx.matchingViolationsInFile,
+            importNeighborsOneHop: ctx.importNeighborsOneHop,
+          },
+        });
+      }
+
+      return textResult({
+        rule,
+        ...explanation,
+        availableSeverities: ['info', 'warning', 'critical'],
+      });
+    } catch (error) {
+      return textResult({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: analyze_change_impact
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'analyze_change_impact',
+  'Change-centric analysis: violations on touched files, violations in the 1-hop dependency neighborhood, local hubs, and a Mermaid subgraph. Answers "what does my edit touch in the graph?" — not a full-repo style scan.',
+  {
+    projectPath: z.string().describe('Absolute or relative path to the project root'),
+    changedFiles: z
+      .array(z.string())
+      .min(1)
+      .describe('Repo-relative paths of files changed in the PR or edit (e.g. ["src/application/foo.ts"])'),
+    configPath: z.string().optional().describe('Path to archguard.config.json (optional)'),
+  },
+  async ({ projectPath, changedFiles, configPath }) => {
+    try {
+      const out = await analyzeChangeImpact(projectPath, changedFiles, configPath);
+      return textResult(out);
+    } catch (error) {
+      return textResult({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: compare_to_baseline
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'compare_to_baseline',
+  'Compare current analysis to a saved ArchGuard JSON report (e.g. CI artifact from archguard --format json). Surfaces score delta and violations introduced/resolved — architectural drift over time.',
+  {
+    projectPath: z.string().describe('Absolute or relative path to the project root'),
+    baselineReportPath: z
+      .string()
+      .describe('Path to baseline JSON relative to project root, or absolute path'),
+    configPath: z.string().optional().describe('Path to archguard.config.json (optional)'),
+  },
+  async ({ projectPath, baselineReportPath, configPath }) => {
+    try {
+      const out = await compareToBaselineReport(projectPath, baselineReportPath, configPath);
+      return textResult(out);
+    } catch (error) {
+      return textResult({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: dependency_graph_mermaid
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'dependency_graph_mermaid',
+  'Mermaid diagram of aggregated internal import flow between top-level buckets (e.g. src/domain → src/application). For architecture maps in PRs or docs — not ESLint output.',
+  {
+    projectPath: z.string().describe('Absolute or relative path to the project root'),
+    configPath: z.string().optional().describe('Path to archguard.config.json (optional)'),
+    maxEdges: z.number().optional().default(48).describe('Cap on number of aggregated edges'),
+  },
+  async ({ projectPath, configPath, maxEdges }) => {
+    try {
+      const { graph } = await analyzeProjectWithGraph(projectPath, configPath);
+      return textResult({
+        framing: 'Aggregated cross-bucket internal imports (path-based).',
+        mermaid: buildDependencyLayerMermaid(graph, maxEdges),
+      });
+    } catch (error) {
+      return textResult({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: validate_architecture_config
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'validate_architecture_config',
+  'Validate an archguard.config.json body (string) with the same Zod schema as the CLI — gate config edits before commit without running a full analysis.',
+  {
+    configJson: z.string().describe('Full JSON text of an ArchGuard config file'),
+  },
+  async ({ configJson }) => {
+    try {
+      const out = validateArchguardConfigJson(configJson);
+      return textResult(out);
+    } catch (error) {
+      return textResult({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Tool: architecture_review_summary
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'architecture_review_summary',
+  'Role-aware summary bullets for author, reviewer, and tech lead, plus metrics. Optional baseBranch adds git compare. Graph-native PR narrative — distinct from linters.',
+  {
+    projectPath: z.string().describe('Absolute or relative path to the project root'),
+    baseBranch: z
+      .string()
+      .optional()
+      .describe('If set, include compare_branches-style diff vs this branch (e.g. main)'),
+    configPath: z.string().optional().describe('Path to archguard.config.json (optional)'),
+  },
+  async ({ projectPath, baseBranch, configPath }) => {
+    try {
+      const out = await buildArchitectureReviewSummary(projectPath, {
+        baseBranch,
+        configPath,
+      });
+      return textResult(out);
+    } catch (error) {
+      return textResult({ error: error instanceof Error ? error.message : String(error) });
+    }
   }
 );
 

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DiffAnalyzer } from '@application/diff-analyzer.js';
 import type { DiffResult, ViolationDelta } from '@domain/types.js';
 
 /**
@@ -49,6 +50,12 @@ function buildDiffResult(
     summary: `Score: ${scoreDelta >= 0 ? '+' : ''}${scoreDelta} points.`,
   };
 }
+
+describe('DiffAnalyzer.compare guard', () => {
+  it('rejects unsafe baseBranch before running analysis', async () => {
+    await expect(new DiffAnalyzer().compare(process.cwd(), '$(evil)')).rejects.toThrow(/Invalid git ref/);
+  });
+});
 
 describe('DiffResult contract', () => {
   it('should mark as improved when score increases', () => {
